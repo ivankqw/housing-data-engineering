@@ -1,0 +1,6 @@
+venv/
+!*.tf
+*.conf
+.DS_Store
+__pycache__
+*.csv
