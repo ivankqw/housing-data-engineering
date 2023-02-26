@@ -1,7 +1,23 @@
+# related to venv
 venv/
 !*.tf
 *.conf
+
+# related to jupyter
+.ipynb_checkpoints
+
+# related to vscode
+.vscode
+
+# related to python
 .DS_Store
 __pycache__
+
+# related to storage
 *.csv
-.vscode
+
+# airflow specific files
+airflow/dags/__pycache__
+airflow/plugins/*
+airflow/logs/*
+.env
