@@ -3,8 +3,6 @@ from airflow.providers.papermill.operators.papermill import PapermillOperator
 from airflow.operators.bash import BashOperator
 from airflow.utils.dates import days_ago
 
-# pip install apache-airflow-providers-papermill
-
 with DAG(
     dag_id="housing_pipeline",
     default_args={"owner": "airflow"},
@@ -13,7 +11,7 @@ with DAG(
     tags=["is3107"],
 ) as dag:
     notebook_task = PapermillOperator(
-        task_id="housing_pipeline",
+        task_id="notebook_task",
         input_nb="/opt/airflow/extract/Resale_Flats.ipynb",
         output_nb="/opt/airflow/extract/out-{{ execution_date }}.ipynb",
         parameters={"msgs": "Ran from Airflow at {{ execution_date }}!"},
