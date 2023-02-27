@@ -8,7 +8,7 @@
 2. cd to `/housing-data-engineering/airflow` (Which is this directory)
 3. Create two folders `/logs` and `/plugins` within `/housing-data-engineering/airflow`
 3. Copy `.env` to `/housing-data-engineering/airflow` (See GDrive) 
-3. Run `docker-compose airflow-init`
+3. Run `docker-compose up airflow-init`, then `docker-compose build`, then `docker-compose up`
 
 ## Usage 
 1. Run Docker Desktop
