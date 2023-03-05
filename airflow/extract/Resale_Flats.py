@@ -1,5 +1,6 @@
 import requests
-import pandas as pd 
+import pandas as pd
+
 
 def get_urls(resource_ids, base_url, route):
     return [
@@ -35,6 +36,7 @@ def get_resale_flats(url, base_url) -> list:
             return result  # return what we have so far
     return result
 
+
 def get_all_resale_flats(start_urls, base_url) -> list:
     result = []
     for url in start_urls:
@@ -48,4 +50,15 @@ def run(resource_ids, base_url, route, output_file):
 
 
 if __name__ == "__main__":
-    print("hello world!")
+    # base_url = "https://data.gov.sg"
+    # route = "/api/action/datastore_search"
+    # resource_ids = {
+    #     "2017_latest": 'f1765b54-a209-4718-8d38-a39237f502b3',
+    #     "2015_2016": "1b702208-44bf-4829-b620-4615ee19b57c",
+    #     "2012_2014": "83b2fc37-ce8c-4df4-968b-370fd818138b",
+    #     "2000_2012": "8c00bf08-9124-479e-aeca-7cc411d884c4",
+    #     "1990_1999": "adbbddd3-30e2-445f-a123-29bee150a6fe",
+    # }
+    # run(resource_ids, base_url, route, "resale_flats.csv")
+
+    print("Hello world")
