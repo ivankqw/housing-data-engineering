@@ -45,7 +45,7 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider packages you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  #image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.5.1}
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.5.1}
   &airflow-common
   build: .
   # build: .
@@ -78,6 +78,24 @@ x-airflow-common:
       condition: service_healthy
 
 services:
+  mysql:
+    image: mysql:8.0
+    cap_add:
+      - SYS_NICE
+    restart: 'no'
+    environment:
+      MYSQL_DATABASE: 'db'
+      # So you don't have to use root, but you can if you like
+      MYSQL_USER: 'user'
+      # You can use whatever password you like
+      MYSQL_PASSWORD: 'password'
+      # Password for root access
+      MYSQL_ROOT_PASSWORD: 'password'
+    ports:
+      - '6543:3306'
+    volumes:
+      - mysql-db-volume:/var/lib/mysql
+
   postgres:
     image: postgres:13
     environment:
@@ -91,6 +109,8 @@ services:
       interval: 5s
       retries: 5
     restart: "no"
+    ports:
+      - "5432:5432"
 
   redis:
     image: redis:latest
@@ -296,3 +316,4 @@ services:
 
 volumes:
   postgres-db-volume:
+  mysql-db-volume:
