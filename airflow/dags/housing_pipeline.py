@@ -1,5 +1,4 @@
 from airflow import DAG
-from airflow.providers.papermill.operators.papermill import PapermillOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.operators.bash import BashOperator
 from airflow.utils.dates import days_ago
@@ -28,7 +27,7 @@ with DAG(
     create_tables_if_not_exists = {
         k: PostgresOperator(
             task_id=f"create_if_not_exists_{k}_table",
-            postgres_conn_id="postgres_localhost",
+            postgres_conn_id="db_localhost",
             sql=v["path"],
         )
         for k, v in TASK_DEFS.items()

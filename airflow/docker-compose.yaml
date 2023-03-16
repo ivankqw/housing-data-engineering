@@ -78,23 +78,21 @@ x-airflow-common:
       condition: service_healthy
 
 services:
-  mysql:
-    image: mysql:8.0
-    cap_add:
-      - SYS_NICE
-    restart: 'no'
+  db:
+    image: postgres:12
     environment:
-      MYSQL_DATABASE: 'db'
-      # So you don't have to use root, but you can if you like
-      MYSQL_USER: 'user'
-      # You can use whatever password you like
-      MYSQL_PASSWORD: 'password'
-      # Password for root access
-      MYSQL_ROOT_PASSWORD: 'password'
-    ports:
-      - '6543:3306'
+      POSTGRES_USER: db
+      POSTGRES_PASSWORD: db
+      POSTGRES_DB: db
     volumes:
-      - mysql-db-volume:/var/lib/mysql
+      - db-volume:/var/lib/db/data
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "db" ]
+      interval: 5s
+      retries: 5
+    restart: "no"
+    ports:
+      - "1234:5432"
 
   postgres:
     image: postgres:13
@@ -316,4 +314,4 @@ services:
 
 volumes:
   postgres-db-volume:
-  mysql-db-volume:
+  db-volume:
