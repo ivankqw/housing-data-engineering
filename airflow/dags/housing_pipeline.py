@@ -40,10 +40,15 @@ with DAG(
         ti.xcom_push('df_planning_decisions', data_path_planning_decisions)
 
     def extract_datagovsg_data(**kwargs):
+        print("Getting resale flat transactions...")
         df_resale_flat_transactions = datagovsg.get_resale_flat_transactions()
+        print("Getting salesperson information...")
         df_salesperson_info = datagovsg.get_salesperson_information()
+        print("Getting salesperson transactions...")
         df_salesperson_trans = datagovsg.get_salesperson_transactions()
+        print("Getting renting out of flats...")
         df_flat_rental = datagovsg.get_renting_out_of_flats_2023()
+        print("Getting HDB property information...")
         df_hdb_information = datagovsg.get_hdb_property_information()
 
         data_path = '/opt/airflow/dags/data'
@@ -83,8 +88,16 @@ with DAG(
         df_flat_rental_filename = ti.xcom_pull(task_ids='extract_datagovsg_data', key='df_flat_rental')
         df_hdb_information_filename = ti.xcom_pull(task_ids='extract_datagovsg_data', key='df_hdb_information')
 
-        # print all filenames with labels
+        # print all filenames
         print("df_private_transactions_filename: ", df_private_transactions_filename)
+        print("df_private_rental_filename: ", df_private_rental_filename)
+        print("df_planning_decisions_filename: ", df_planning_decisions_filename)
+        print("df_resale_flat_transactions_filename: ", df_resale_flat_transactions_filename)
+        print("df_salesperson_info_filename: ", df_salesperson_info_filename)
+        print("df_salesperson_trans_filename: ", df_salesperson_trans_filename)
+        print("df_flat_rental_filename: ", df_flat_rental_filename)
+        print("df_hdb_information_filename: ", df_hdb_information_filename)
+        
         
         
 
