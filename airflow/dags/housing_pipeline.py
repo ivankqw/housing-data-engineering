@@ -5,6 +5,7 @@ from airflow.operators.bash import BashOperator
 from airflow.utils.dates import days_ago
 import ura
 import datagovsg
+import transform
 import os
 
 with DAG(
@@ -118,6 +119,35 @@ with DAG(
         print("df_flat_rental_filename: ", df_flat_rental_filename)
         print("df_hdb_information_filename: ", df_hdb_information_filename)
 
+        # transform
+        print("Transforming..")
+        
+        df_districts = transform.read_and_transform_districts()
+        df_resale_flats = transform.transform_resale_flats(df_resale_flat_transactions_filename, df_districts)
+
+        df_private_transactions, df_private_rental = transform.transform_private_transactions_and_rental(df_private_transactions_filename, df_private_rental_filename, df_districts)
+        print("Transformed!")
+        print("Saving to csv...")
+        # save to csv
+        data_path = "/opt/airflow/dags/data"
+        data_path_resale_flats = data_path + "/resale_flats_transformed.csv"
+        data_path_private_transactions = data_path + "/private_transactions_transformed.csv"
+        data_path_private_rental = data_path + "/private_rental_transformed.csv"
+
+        df_resale_flats.to_csv(data_path_resale_flats, index=False)
+        df_private_transactions.to_csv(data_path_private_transactions, index=False)
+        df_private_rental.to_csv(data_path_private_rental, index=False)
+
+        # push to task instance
+        ti.xcom_push("df_resale_flats_transformed", data_path_resale_flats)
+        ti.xcom_push("df_private_transactions_transformed", data_path_private_transactions)
+        ti.xcom_push("df_private_rental_transformed", data_path_private_rental)
+    
+    def load(**kwargs):
+        print("Loading data...")
+        ti = kwargs["ti"]
+
+
     # TASK_DEFS = {
     #     "test": {"path": "sql/test.sql"},
     # }
@@ -141,6 +171,11 @@ with DAG(
         python_callable=transform,
     )
 
+    load_task = PythonOperator(
+        task_id="load",
+        python_callable=load,
+    )
+
     # create_tables_if_not_exists = {
     #     k: PostgresOperator(
     #         task_id=f"create_if_not_exists_{k}_table",
@@ -150,4 +185,4 @@ with DAG(
     #     for k, v in TASK_DEFS.items()
     # }
 
-    [extract_ura_data_task, extract_datagovsg_data_task] >> transform_task
+    [extract_ura_data_task, extract_datagovsg_data_task] >> transform_task >> load_task
