@@ -26,7 +26,7 @@ with DAG(
             df_planning_decisions,
         ) = ura.get_all_ura()
         print("URA data obtained.")
-        
+
         data_path = "/opt/airflow/dags/data"
         data_path_private_transactions = data_path + "/private_transactions.csv"
         data_path_private_rental = data_path + "/private_rental.csv"
@@ -130,6 +130,8 @@ with DAG(
         print("Transforming private transactions and rental...")
         df_private_transactions, df_private_rental = transform.transform_private_transactions_and_rental(df_private_transactions_filename, df_private_rental_filename, df_districts)
         print("Transformed!")
+
+        
         print("Saving to csv...")
         # save to csv
         data_path = "/opt/airflow/dags/data"
