@@ -43,7 +43,7 @@ def transform_resale_flats(filename, df_districts):
     print(resale_flats.shape)
 
     # take first 1000 for testing purposes
-    resale_flats = resale_flats.head(1000)
+    # resale_flats = resale_flats.head(1000)
 
     # use openmap api to get postal code and district from the street name
     # add dynamic programming to cache the results if same address is called again
