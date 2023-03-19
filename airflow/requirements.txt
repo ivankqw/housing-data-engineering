@@ -6,3 +6,4 @@ requests==2.28.2
 ipython==7.34.0
 ipykernel==6.5.0
 python-dotenv==0.21.1
+openpyxl==3.0.9
