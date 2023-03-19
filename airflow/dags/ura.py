@@ -47,9 +47,13 @@ def get_all_ura():
         "/uraDataService/invokeUraDS?service=PMI_Resi_Transaction&batch=" + str(i)
         for i in range(1, 5)
     ]
+
     private_rental_routes = [
-        "/uraDataService/invokeUraDS?service=PMI_Resi_Rental&refPeriod=14q1"
-    ]  # start from 14q1 to 23q1
+        f"/uraDataService/invokeUraDS?service=PMI_Resi_Rental&refPeriod={q}"
+        # start from 14q1 to 23q1
+        for q in [f"{y}q{i}" for y in range(14, 24) for i in range(1, 5)]
+    ]
+
     planning_decisions_routes = [
         "/uraDataService/invokeUraDS?service=Planning_Decision&year=" + str(i)
         for i in range(2000, 2024)
@@ -67,11 +71,11 @@ def get_all_ura():
     # get_all_results(token, access_key, planning_decisions_routes).to_csv(
     #     "../data/planning_decisions.csv", index=False
     # )
-
+    print("Getting private transactions...")
     df_private_transactions = get_all_results(token, access_key, private_transactions_routes)
-
+    print("Getting private rental...")
     df_private_rental = get_all_results(token, access_key, private_rental_routes)
-
+    print("Getting planning decisions...")
     df_planning_decisions = get_all_results(token, access_key, planning_decisions_routes)
 
     return df_private_transactions, df_private_rental, df_planning_decisions
