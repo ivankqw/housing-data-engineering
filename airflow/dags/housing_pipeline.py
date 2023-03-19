@@ -19,11 +19,14 @@ with DAG(
     def extract_ura_data(**kwargs):
         # print current working directory
         print("Current working directory: ", os.getcwd())
+        print("Getting URA data...")
         (
             df_private_transactions,
             df_private_rental,
             df_planning_decisions,
         ) = ura.get_all_ura()
+        print("URA data obtained.")
+        
         data_path = "/opt/airflow/dags/data"
         data_path_private_transactions = data_path + "/private_transactions.csv"
         data_path_private_rental = data_path + "/private_rental.csv"

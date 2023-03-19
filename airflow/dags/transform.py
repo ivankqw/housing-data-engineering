@@ -49,12 +49,7 @@ def transform_resale_flats(filename, df_districts):
     # add dynamic programming to cache the results if same address is called again
     dict1 = {}
 
-    count = 0
     def get_info_from_street_name(address):
-        global count
-        count += 1
-        if count % 1000 == 0:
-            print(count)
         # if address is in dict1, return the value
         if address in dict1:
             return dict1[address]
