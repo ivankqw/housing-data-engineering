@@ -30,14 +30,16 @@ def get_result(token, access_key, route):
     conn.request("GET", route, payload, headers)
     res = conn.getresponse()
     data = res.read()
-    return json.loads(data.decode("utf-8"))['Result']
+    data = json.loads(data.decode("utf-8"))['Result']
+    # data = pd.json_normalize(data = data, record_path='transaction', meta = ['street', 'project'])
+    return data
 
 
 def get_all_results(token, access_key, routes):
     result = []
     for route in routes:
         result.extend(get_result(token, access_key, route))
-    return pd.DataFrame(result)
+    return result
 
 
 # %%
@@ -48,8 +50,11 @@ def get_all_ura():
         for i in range(1, 5)
     ]
     private_rental_routes = [
-        "/uraDataService/invokeUraDS?service=PMI_Resi_Rental&refPeriod=14q1"
-    ]  # start from 14q1 to 23q1
+        f"/uraDataService/invokeUraDS?service=PMI_Resi_Rental&refPeriod={q}"
+        # start from 14q1 to 23q1
+        for q in [f"{y}q{i}" for y in range(14, 24) for i in range(1, 5)]
+    ]  
+
     planning_decisions_routes = [
         "/uraDataService/invokeUraDS?service=Planning_Decision&year=" + str(i)
         for i in range(2000, 2024)
@@ -68,14 +73,21 @@ def get_all_ura():
     #     "../data/planning_decisions.csv", index=False
     # )
 
-    df_private_transactions = get_all_results(token, access_key, private_transactions_routes)
+    df_private_transactions = pd.json_normalize(
+        data = get_all_results(token, access_key, private_transactions_routes), 
+        record_path='transaction', 
+        meta = ['street', 'project', 'marketSegment']
+        )
 
-    df_private_rental = get_all_results(token, access_key, private_rental_routes)
+    df_private_rental = pd.json_normalize(
+        data = get_all_results(token, access_key, private_rental_routes), 
+        record_path='rental', 
+        meta = ['street', 'project']
+        )
 
-    df_planning_decisions = get_all_results(token, access_key, planning_decisions_routes)
+    df_planning_decisions = pd.DataFrame(get_all_results(token, access_key, planning_decisions_routes))
 
     return df_private_transactions, df_private_rental, df_planning_decisions
-
 
 
 
