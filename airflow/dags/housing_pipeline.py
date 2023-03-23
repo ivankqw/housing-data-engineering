@@ -152,7 +152,17 @@ with DAG(
     
     def load(**kwargs):
         print("Loading data...")
+        # get transformed data from task instance
         ti = kwargs["ti"]
+        resale_flats_transformed_filename = ti.xcom_pull(task_ids="transform_first", key="df_resale_flats_transformed")
+        private_transactions_transformed_filename = ti.xcom_pull(task_ids="transform_first", key="df_private_transactions_transformed")
+        private_rental_transformed_filename = ti.xcom_pull(task_ids="transform_first", key="df_private_rental_transformed")
+
+        # print filenames
+        print("resale_flats_transformed_filename: ", resale_flats_transformed_filename)
+        print("private_transactions_transformed_filename: ", private_transactions_transformed_filename)
+        print("private_rental_transformed_filename: ", private_rental_transformed_filename)
+
 
 
     # TASK_DEFS = {
