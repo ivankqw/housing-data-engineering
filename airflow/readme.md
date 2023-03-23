@@ -15,7 +15,7 @@
 2. cd to `/housing-data-engineering/airflow` 
 3. Run `docker-compose up`
 4. Go to [localhost:8080](http://localhost:8080) and input airflow as username and password 
-5. Go to Admin > Connections, Create a new connection, enter the connection id (postgres_localhost), connection type (postgres), Host (airflow-postgres-1), Login and Password (airflow), Port (5432).
+5. Go to Admin > Connections, Create a new connection, enter the connection id (postgres_localhost), connection type (postgres), Host (airflow-db-1), Login and Password (db), Port (5432).
 6. Run the dag `/dags/housing_pipeline.py`.
 
 ### Stopping Airflow Docker Container
