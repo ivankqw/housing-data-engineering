@@ -54,6 +54,18 @@ with DAG(
         df_flat_rental = datagovsg.get_renting_out_of_flats_2023()
         print("Getting HDB property information...")
         df_hdb_information = datagovsg.get_hdb_property_information()
+        # rename columns in df_hdb_information
+        df_hdb_information = df_hdb_information.rename(
+            columns={
+                "1room_sold": "one_room_sold",
+                "2room_sold": "two_room_sold",
+                "3room_sold": "three_room_sold",
+                "4room_sold": "four_room_sold",
+                "5room_sold": "five_room_sold",
+                "1room_rental": "one_room_rental",
+                "2room_rental": "two_room_rental",
+                "3room_rental": "three_room_rental"
+                })
 
         data_path = "/opt/airflow/dags/data"
         data_path_resale_flat_transactions = data_path + "/resale_flat_transactions.csv"
