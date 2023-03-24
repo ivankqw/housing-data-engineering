@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.providers.postgres.operators.postgres import PostgresOperator
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.utils.dates import days_ago
@@ -7,6 +8,7 @@ import ura
 import datagovsg
 import transform
 import os
+import queries
 
 with DAG(
     dag_id="housing_pipeline",
@@ -150,10 +152,12 @@ with DAG(
         data_path_resale_flats = data_path + "/resale_flats_transformed.csv"
         data_path_private_transactions = data_path + "/private_transactions_transformed.csv"
         data_path_private_rental = data_path + "/private_rental_transformed.csv"
+        data_path_districts = data_path + "/districts_transformed.csv"
     
         df_resale_flats.to_csv(data_path_resale_flats, index=False)
         df_private_transactions.to_csv(data_path_private_transactions, index=False)
         df_private_rental.to_csv(data_path_private_rental, index=False)
+        df_districts.to_csv(data_path_districts, index=False)
         print("Saved!")
 
         # push to task instance
@@ -161,30 +165,6 @@ with DAG(
         ti.xcom_push("df_private_transactions_transformed", data_path_private_transactions)
         ti.xcom_push("df_private_rental_transformed", data_path_private_rental)
 
-    
-    def load(**kwargs):
-        print("Loading data...")
-        # get transformed data from task instance
-        ti = kwargs["ti"]
-        resale_flats_transformed_filename = ti.xcom_pull(task_ids="transform_first", key="df_resale_flats_transformed")
-        private_transactions_transformed_filename = ti.xcom_pull(task_ids="transform_first", key="df_private_transactions_transformed")
-        private_rental_transformed_filename = ti.xcom_pull(task_ids="transform_first", key="df_private_rental_transformed")
-
-        # print filenames
-        print("resale_flats_transformed_filename: ", resale_flats_transformed_filename)
-        print("private_transactions_transformed_filename: ", private_transactions_transformed_filename)
-        print("private_rental_transformed_filename: ", private_rental_transformed_filename)
-
-
-
-    # TASK_DEFS = {
-    #     "test": {"path": "sql/test.sql"},
-    # }
-
-    # create_table = BashOperator(
-    #     task_id="create_table",
-    #     bash_command="python /opt/airflow/load/create_table.py",
-    # )
     extract_ura_data_task = PythonOperator(
         task_id="extract_ura_data",
         python_callable=extract_ura_data,
@@ -200,18 +180,108 @@ with DAG(
         python_callable=transform_first,
     )
 
-    load_task = PythonOperator(
-        task_id="load",
-        python_callable=load,
+    # create a postgres operator to execute the create_tables_query
+    create_tables = PostgresOperator(
+        task_id="create_tables",
+        postgres_conn_id="db_localhost",
+        sql=queries.CREATE_TABLES,
     )
 
-    # create_tables_if_not_exists = {
-    #     k: PostgresOperator(
-    #         task_id=f"create_if_not_exists_{k}_table",
-    #         postgres_conn_id="db_localhost",
-    #         sql=v["path"],
-    #     )
-    #     for k, v in TASK_DEFS.items()
-    # }
+    insert_salesperson_information = PythonOperator(
+        task_id="insert_salesperson_information",
+        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=sql,
+            filename=filepath
+        ),
+        op_kwargs={
+            "sql": queries.INSERT_SALESPERSON_INFORMATION,
+            "filepath": "/opt/airflow/dags/data/salesperson_info.csv"
+        },
+    )
 
-    [extract_ura_data_task, extract_datagovsg_data_task] >> transform_task >> load_task
+    insert_salesperson_transactions = PythonOperator(
+        task_id="insert_salesperson_transactions",
+        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=sql,
+            filename=filepath
+        ),
+        op_kwargs={
+            "sql": queries.INSERT_SALESPERSON_TRANSACTIONS,
+            "filepath": "/opt/airflow/dags/data/salesperson_transactions.csv"
+        },
+    )
+
+    insert_districts = PythonOperator(
+        task_id="insert_districts",
+        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=sql,
+            filename=filepath
+        ),
+        op_kwargs={
+            "sql": queries.INSERT_DISTRICTS,
+            "filepath": "/opt/airflow/dags/data/districts_transformed.csv"
+        },
+    )
+
+    insert_private_transactions = PythonOperator(
+        task_id="insert_private_transactions",
+        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=sql,
+            filename=filepath
+        ),
+        op_kwargs={
+            "sql": queries.INSERT_PRIVATE_TRANSACTIONS,
+            "filepath": "/opt/airflow/dags/data/private_transactions_transformed.csv"
+        },
+    )
+
+    insert_private_rental = PythonOperator(
+        task_id="insert_private_rental",
+        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=sql,
+            filename=filepath
+        ),
+        op_kwargs={
+            "sql": queries.INSERT_PRIVATE_RENTAL,
+            "filepath": "/opt/airflow/dags/data/private_rental_transformed.csv"
+        },
+    )
+
+    insert_hdb_information = PythonOperator(
+        task_id="insert_hdb_information",
+        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=sql,
+            filename=filepath
+        ),
+        op_kwargs={
+            "sql": queries.INSERT_HDB_INFORMATION,
+            "filepath": "/opt/airflow/dags/data/hdb_information.csv"
+        },
+    )
+
+    insert_resale_flats = PythonOperator(
+        task_id="insert_resale_flats",
+        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=sql,
+            filename=filepath
+        ),
+        op_kwargs={
+            "sql": queries.INSERT_RESALE_FLATS,
+            "filepath": "/opt/airflow/dags/data/resale_flats_transformed.csv"
+        },
+    )
+
+    insert_rental_flats = PythonOperator(
+        task_id="insert_rental_flats",
+        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=sql,
+            filename=filepath
+        ),
+        op_kwargs={
+            "sql": queries.INSERT_RENTAL_FLATS,
+            "filepath": "/opt/airflow/dags/data/flat_rental.csv"
+        },
+    )
+
+    [extract_ura_data_task, extract_datagovsg_data_task] >> transform_task >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats]
+
