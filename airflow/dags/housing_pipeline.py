@@ -143,6 +143,8 @@ with DAG(
         df_resale_flats = transform.transform_resale_flats(df_resale_flat_transactions_filename, df_districts)
         print("Transforming private transactions and rental...")
         df_private_transactions, df_private_rental = transform.transform_private_transactions_and_rental(df_private_transactions_filename, df_private_rental_filename, df_districts)
+        print("Transforming salesperson_transactions...")
+        df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename)
         print("Transformed!")
 
         
@@ -153,17 +155,20 @@ with DAG(
         data_path_private_transactions = data_path + "/private_transactions_transformed.csv"
         data_path_private_rental = data_path + "/private_rental_transformed.csv"
         data_path_districts = data_path + "/districts_transformed.csv"
+        data_path_salesperson_transactions = data_path + "/salesperson_transactions_transformed.csv"
     
         df_resale_flats.to_csv(data_path_resale_flats, index=False)
         df_private_transactions.to_csv(data_path_private_transactions, index=False)
         df_private_rental.to_csv(data_path_private_rental, index=False)
         df_districts.to_csv(data_path_districts, index=False)
+        df_salesperson_transactions.to_csv(data_path_salesperson_transactions, index=False)
         print("Saved!")
 
         # push to task instance
         ti.xcom_push("df_resale_flats_transformed", data_path_resale_flats)
         ti.xcom_push("df_private_transactions_transformed", data_path_private_transactions)
         ti.xcom_push("df_private_rental_transformed", data_path_private_rental)
+        ti.xcom_push("df_salesperson_transactions_transformed", data_path_salesperson_transactions)
 
     extract_ura_data_task = PythonOperator(
         task_id="extract_ura_data",
@@ -207,7 +212,7 @@ with DAG(
         ),
         op_kwargs={
             "sql": queries.INSERT_SALESPERSON_TRANSACTIONS,
-            "filepath": "/opt/airflow/dags/data/salesperson_transactions.csv"
+            "filepath": "/opt/airflow/dags/data/salesperson_transactions_transformed.csv"
         },
     )
 

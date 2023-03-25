@@ -144,3 +144,21 @@ def transform_private_transactions_and_rental(filename_private_transactions, fil
     private_rental['month'], private_rental['year'] = zip(*private_rental['leaseDate'].apply(private_get_month_year))
 
     return private_transactions, private_rental
+
+def transform_salesperson_transactions(filename):
+    # read the salesperson_transactions csv file
+    salesperson_transactions = pd.read_csv(filename)
+
+    # for district column, replace "-" with NULL for sql
+    salesperson_transactions['district'] = salesperson_transactions['district'].replace('-', 'NULL')
+
+    # for transaction_date column in the format of mmm-yy (e.g. Jan-19), create new 2 columns, one for month and one for year
+    salesperson_transactions['transaction_date'] = salesperson_transactions['transaction_date'].str.split('-')
+    salesperson_transactions['month'] = salesperson_transactions['transaction_date'].apply(lambda x: x[0])
+    # for the year, add prefix 20
+    salesperson_transactions['year'] = salesperson_transactions['transaction_date'].apply(lambda x: '20' + x[1])
+
+    # drop transaction_date column
+    salesperson_transactions = salesperson_transactions.drop(columns=['transaction_date'])
+
+    return salesperson_transactions
