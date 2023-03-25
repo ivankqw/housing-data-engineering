@@ -19,8 +19,6 @@ with DAG(
 ) as dag:
 
     def extract_ura_data(**kwargs):
-        # print current working directory
-        print("Current working directory: ", os.getcwd())
         print("Getting URA data...")
         (
             df_private_transactions,
@@ -35,15 +33,18 @@ with DAG(
         data_path_planning_decisions = data_path + "/planning_decisions.csv"
 
         # save to csv
+        print("Saving to csv...")
         df_private_transactions.to_csv(data_path_private_transactions, index=False)
         df_private_rental.to_csv(data_path_private_rental, index=False)
         df_planning_decisions.to_csv(data_path_planning_decisions, index=False)
-
+        print("Saved to csv.")
         # push to task instance
         ti = kwargs["ti"]
         ti.xcom_push("df_private_transactions", data_path_private_transactions)
         ti.xcom_push("df_private_rental", data_path_private_rental)
         ti.xcom_push("df_planning_decisions", data_path_planning_decisions)
+
+        print("done")
 
     def extract_datagovsg_data(**kwargs):
         print("Getting resale flat transactions...")
@@ -93,8 +94,26 @@ with DAG(
         ti.xcom_push("df_flat_rental", data_path_flat_rental)
         ti.xcom_push("df_hdb_information", data_path_hdb_information)
 
-    def transform_first(**kwargs):
-        print("Transforming data...")
+    def transform_resale_flat_transactions(**kwargs):
+        print("Transforming resale flat transactions...")
+        ti = kwargs["ti"]
+        df_resale_flat_transactions_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_resale_flat_transactions"
+        )
+
+        # transform
+        df_districts = transform.read_and_transform_districts()
+        df_resale_flats = transform.transform_resale_flats(df_resale_flat_transactions_filename, df_districts)
+
+        # save to csv
+        data_path = "/opt/airflow/dags/data"
+        data_path_resale_flats = data_path + "/resale_flats_transformed.csv"
+        data_path_districts = data_path + "/districts_transformed.csv"
+
+        df_resale_flats.to_csv(data_path_resale_flats, index=False)
+        df_districts.to_csv(data_path_districts, index=False)
+
+    def transform_private_transactions_and_rental(**kwargs):
         ti = kwargs["ti"]
         # get all the data from task instance
         df_private_transactions_filename = ti.xcom_pull(
@@ -103,72 +122,35 @@ with DAG(
         df_private_rental_filename = ti.xcom_pull(
             task_ids="extract_ura_data", key="df_private_rental"
         )
-        df_planning_decisions_filename = ti.xcom_pull(
-            task_ids="extract_ura_data", key="df_planning_decisions"
-        )
 
+        print("Transforming private transactions and rental...")
+        df_private_transactions, df_private_rental = transform.transform_private_transactions_and_rental(df_private_transactions_filename, df_private_rental_filename)
+        
+        data_path = "/opt/airflow/dags/data"
+        data_path_private_transactions = data_path + "/private_transactions_transformed.csv"
+        data_path_private_rental = data_path + "/private_rental_transformed.csv"
+
+        df_private_transactions.to_csv(data_path_private_transactions, index=False)
+        df_private_rental.to_csv(data_path_private_rental, index=False)
+
+        ti.xcom_push("df_private_transactions_transformed", data_path_private_transactions)
+        ti.xcom_push("df_private_rental_transformed", data_path_private_rental)
+
+    def transform_salesperson_transactions(**kwargs):
+        ti = kwargs["ti"]
         df_resale_flat_transactions_filename = ti.xcom_pull(
             task_ids="extract_datagovsg_data", key="df_resale_flat_transactions"
         )
-        df_salesperson_info_filename = ti.xcom_pull(
-            task_ids="extract_datagovsg_data", key="df_salesperson_info"
-        )
-        df_salesperson_trans_filename = ti.xcom_pull(
-            task_ids="extract_datagovsg_data", key="df_salesperson_trans"
-        )
-        df_flat_rental_filename = ti.xcom_pull(
-            task_ids="extract_datagovsg_data", key="df_flat_rental"
-        )
-        df_hdb_information_filename = ti.xcom_pull(
-            task_ids="extract_datagovsg_data", key="df_hdb_information"
-        )
-
-        # print all filenames
-        print("df_private_transactions_filename: ", df_private_transactions_filename)
-        print("df_private_rental_filename: ", df_private_rental_filename)
-        print("df_planning_decisions_filename: ", df_planning_decisions_filename)
-        print(
-            "df_resale_flat_transactions_filename: ",
-            df_resale_flat_transactions_filename,
-        )
-        print("df_salesperson_info_filename: ", df_salesperson_info_filename)
-        print("df_salesperson_trans_filename: ", df_salesperson_trans_filename)
-        print("df_flat_rental_filename: ", df_flat_rental_filename)
-        print("df_hdb_information_filename: ", df_hdb_information_filename)
-
-        # transform
-        print("Transforming..")
-        print("Transforming resale flats...")
-        df_districts = transform.read_and_transform_districts()
-        df_resale_flats = transform.transform_resale_flats(df_resale_flat_transactions_filename, df_districts)
-        print("Transforming private transactions and rental...")
-        df_private_transactions, df_private_rental = transform.transform_private_transactions_and_rental(df_private_transactions_filename, df_private_rental_filename)
         print("Transforming salesperson_transactions...")
         df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename)
-        print("Transformed!")
-
         
-        print("Saving to csv...")
-        # save to csv
         data_path = "/opt/airflow/dags/data"
-        data_path_resale_flats = data_path + "/resale_flats_transformed.csv"
-        data_path_private_transactions = data_path + "/private_transactions_transformed.csv"
-        data_path_private_rental = data_path + "/private_rental_transformed.csv"
-        data_path_districts = data_path + "/districts_transformed.csv"
         data_path_salesperson_transactions = data_path + "/salesperson_transactions_transformed.csv"
-    
-        df_resale_flats.to_csv(data_path_resale_flats, index=False)
-        df_private_transactions.to_csv(data_path_private_transactions, index=False)
-        df_private_rental.to_csv(data_path_private_rental, index=False)
-        df_districts.to_csv(data_path_districts, index=False)
-        df_salesperson_transactions.to_csv(data_path_salesperson_transactions, index=False)
-        print("Saved!")
 
-        # push to task instance
-        ti.xcom_push("df_resale_flats_transformed", data_path_resale_flats)
-        ti.xcom_push("df_private_transactions_transformed", data_path_private_transactions)
-        ti.xcom_push("df_private_rental_transformed", data_path_private_rental)
+        df_salesperson_transactions.to_csv(data_path_salesperson_transactions, index=False)
+
         ti.xcom_push("df_salesperson_transactions_transformed", data_path_salesperson_transactions)
+
 
     extract_ura_data_task = PythonOperator(
         task_id="extract_ura_data",
@@ -180,9 +162,19 @@ with DAG(
         python_callable=extract_datagovsg_data,
     )
 
-    transform_task = PythonOperator(
-        task_id="transform_first",
-        python_callable=transform_first,
+    transform_private_transactions_and_rental_task = PythonOperator(
+        task_id="transform_private_transactions_and_rental",
+        python_callable=transform_private_transactions_and_rental,
+    )
+
+    transform_resale_flat_transactions_task = PythonOperator(
+        task_id="transform_resale_flat_transactions",
+        python_callable=transform_resale_flat_transactions,
+    )
+
+    transform_salesperson_transactions_task = PythonOperator(
+        task_id="transform_salesperson_transactions",
+        python_callable=transform_salesperson_transactions,
     )
 
     # create a postgres operator to execute the create_tables_query
@@ -295,5 +287,9 @@ with DAG(
         sql=queries.ALTER_TABLES,
     )
 
-    [extract_ura_data_task, extract_datagovsg_data_task] >> transform_task >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats] >> alter_tables
+    extract_ura_data_task >> transform_private_transactions_and_rental_task
+    extract_datagovsg_data_task >> [transform_resale_flat_transactions_task, transform_salesperson_transactions_task]
+
+
+    [transform_private_transactions_and_rental_task, transform_resale_flat_transactions_task, transform_salesperson_transactions_task] >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats] >> alter_tables
 
