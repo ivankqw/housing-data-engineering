@@ -142,7 +142,7 @@ with DAG(
         df_districts = transform.read_and_transform_districts()
         df_resale_flats = transform.transform_resale_flats(df_resale_flat_transactions_filename, df_districts)
         print("Transforming private transactions and rental...")
-        df_private_transactions, df_private_rental = transform.transform_private_transactions_and_rental(df_private_transactions_filename, df_private_rental_filename, df_districts)
+        df_private_transactions, df_private_rental = transform.transform_private_transactions_and_rental(df_private_transactions_filename, df_private_rental_filename)
         print("Transforming salesperson_transactions...")
         df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename)
         print("Transformed!")

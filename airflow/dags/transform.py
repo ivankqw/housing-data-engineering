@@ -116,7 +116,7 @@ def transform_resale_flats(filename, df_districts):
 
     return resale_flats
 
-def transform_private_transactions_and_rental(filename_private_transactions, filename_private_rental, df_districts):
+def transform_private_transactions_and_rental(filename_private_transactions, filename_private_rental):
     # read the private_transactions csv file
     private_transactions = pd.read_csv(filename_private_transactions)
     # and private_rental
