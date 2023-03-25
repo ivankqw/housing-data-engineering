@@ -111,6 +111,9 @@ def transform_resale_flats(filename, df_districts):
     df.index.name = 'address'
     df.to_csv(data_path + 'addresses.csv')
 
+    # remove rows with district as NIL
+    resale_flats = resale_flats[resale_flats['district'] != 'NIL']
+
     return resale_flats
 
 def transform_private_transactions_and_rental(filename_private_transactions, filename_private_rental, df_districts):
