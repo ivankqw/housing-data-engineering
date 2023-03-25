@@ -122,9 +122,15 @@ def transform_private_transactions_and_rental(filename_private_transactions, fil
     # and private_rental
     private_rental = pd.read_csv(filename_private_rental)
 
-    private_transactions.head()
+    # add a column _id for both private_transactions and private_rental, integer, auto increment
+    private_transactions['_id'] = range(1, len(private_transactions) + 1)
+    private_rental['_id'] = range(1, len(private_rental) + 1)
 
-    # %%
+    # set index _id
+    private_transactions = private_transactions.set_index('_id')
+    private_rental = private_rental.set_index('_id')
+
+    
     def private_get_month_year(date):
         date = str(date)
         # date is in format of MYY or MMYY
@@ -137,7 +143,7 @@ def transform_private_transactions_and_rental(filename_private_transactions, fil
         year = '20' + year
         return (month, year)
 
-    # %%
+    
     # apply private_get_month_year function to each row, creating 2 new columns for month and year
     private_transactions['month'], private_transactions['year'] = zip(*private_transactions['contractDate'].apply(private_get_month_year))
     # same for private_rental on leaseDate
