@@ -116,15 +116,21 @@ def transform_resale_flats(filename, df_districts):
 
     return resale_flats
 
-def transform_private_transactions_and_rental(filename_private_transactions, filename_private_rental, df_districts):
+def transform_private_transactions_and_rental(filename_private_transactions, filename_private_rental):
     # read the private_transactions csv file
     private_transactions = pd.read_csv(filename_private_transactions)
     # and private_rental
     private_rental = pd.read_csv(filename_private_rental)
 
-    private_transactions.head()
+    # add a column _id for both private_transactions and private_rental, integer, auto increment
+    private_transactions['_id'] = range(1, len(private_transactions) + 1)
+    private_rental['_id'] = range(1, len(private_rental) + 1)
 
-    # %%
+    # set index _id
+    private_transactions = private_transactions.set_index('_id')
+    private_rental = private_rental.set_index('_id')
+
+    
     def private_get_month_year(date):
         date = str(date)
         # date is in format of MYY or MMYY
@@ -137,10 +143,28 @@ def transform_private_transactions_and_rental(filename_private_transactions, fil
         year = '20' + year
         return (month, year)
 
-    # %%
+    
     # apply private_get_month_year function to each row, creating 2 new columns for month and year
     private_transactions['month'], private_transactions['year'] = zip(*private_transactions['contractDate'].apply(private_get_month_year))
     # same for private_rental on leaseDate
     private_rental['month'], private_rental['year'] = zip(*private_rental['leaseDate'].apply(private_get_month_year))
 
     return private_transactions, private_rental
+
+def transform_salesperson_transactions(filename):
+    # read the salesperson_transactions csv file
+    salesperson_transactions = pd.read_csv(filename)
+
+    # for district column, replace "-" with NULL for sql
+    salesperson_transactions['district'] = salesperson_transactions['district'].replace('-', 'NULL')
+
+    # for transaction_date column in the format of mmm-yy (e.g. Jan-19), create new 2 columns, one for month and one for year
+    salesperson_transactions['transaction_date'] = salesperson_transactions['transaction_date'].str.split('-')
+    salesperson_transactions['month'] = salesperson_transactions['transaction_date'].apply(lambda x: x[0])
+    # for the year, add prefix 20
+    salesperson_transactions['year'] = salesperson_transactions['transaction_date'].apply(lambda x: '20' + x[1])
+
+    # drop transaction_date column
+    salesperson_transactions = salesperson_transactions.drop(columns=['transaction_date'])
+
+    return salesperson_transactions
