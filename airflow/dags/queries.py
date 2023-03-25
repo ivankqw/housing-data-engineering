@@ -16,7 +16,7 @@ CREATE_TABLES = """
             registration_no VARCHAR(255),
             registration_start_date DATE,
             estate_agent_name VARCHAR(255),
-            _id INT NOT NULL PRIMARY KEY
+            _id INT NOT NULL
         );
         
         CREATE TABLE IF NOT EXISTS salesperson_transactions (
@@ -27,14 +27,15 @@ CREATE_TABLES = """
             salesperson_name VARCHAR(255),
             transaction_type VARCHAR(255),
             general_location VARCHAR(255),
-            transaction_date VARCHAR(255),
             represented VARCHAR(255),
-            property_type VARCHAR(255)
+            property_type VARCHAR(255),
+            month VARCHAR(255),
+            year VARCHAR(255)
         );
         
         CREATE TABLE IF NOT EXISTS districts (
             postal_district INT NOT NULL,
-            postal_sector INT NOT NUL PRIMARY KEY
+            postal_sector INT NOT NULL PRIMARY KEY
         );
         
         CREATE TABLE IF NOT EXISTS private_transactions (
@@ -109,7 +110,7 @@ CREATE_TABLES = """
             remaining_lease VARCHAR(255),
             lease_commence_date INT,
             storey_range VARCHAR(255),
-            id INT NOT NULL PRIMARY KEY,
+            _id INT NOT NULL PRIMARY KEY,
             block VARCHAR(255),
             year INT,
             street_name_with_block VARCHAR(255),

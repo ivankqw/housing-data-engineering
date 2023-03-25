@@ -113,6 +113,10 @@ with DAG(
         df_resale_flats.to_csv(data_path_resale_flats, index=False)
         df_districts.to_csv(data_path_districts, index=False)
 
+        # push to task instance
+        ti.xcom_push("df_resale_flats", data_path_resale_flats)
+        ti.xcom_push("df_districts", data_path_districts)
+
     def transform_private_transactions_and_rental(**kwargs):
         ti = kwargs["ti"]
         # get all the data from task instance
@@ -151,6 +155,86 @@ with DAG(
 
         ti.xcom_push("df_salesperson_transactions_transformed", data_path_salesperson_transactions)
 
+    def insert_resale_flats(**kwargs):
+        ti = kwargs["ti"]
+        df_resale_flats_filename = ti.xcom_pull(
+            task_ids="transform_resale_flat_transactions", key="df_resale_flats"
+        )
+        PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=queries.INSERT_RESALE_FLATS,
+            filename=df_resale_flats_filename
+        )
+
+    def insert_districts(**kwargs):
+        ti = kwargs["ti"]
+        df_districts_filename = ti.xcom_pull(
+            task_ids="al;", key="df_districts"
+        )
+        PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=queries.INSERT_DISTRICTS,
+            filename=df_districts_filename
+        )
+
+    def insert_salesperson_information(**kwargs):
+        ti = kwargs["ti"]
+        df_salesperson_info_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_salesperson_info"
+        )
+        PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=queries.INSERT_SALESPERSON_INFORMATION,
+            filename=df_salesperson_info_filename
+        )
+
+    def insert_salesperson_transactions(**kwargs):
+        ti = kwargs["ti"]
+        df_salesperson_transactions_filename = ti.xcom_pull(
+            task_ids="transform_salesperson_transactions", key="df_salesperson_transactions_transformed"
+        )
+        PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=queries.INSERT_SALESPERSON_TRANSACTIONS,
+            filename=df_salesperson_transactions_filename
+        )
+
+    def insert_private_transactions(**kwargs):
+        ti = kwargs["ti"]
+        df_private_transactions_filename = ti.xcom_pull(
+            task_ids="transform_private_transactions_and_rental", key="df_private_transactions_transformed"
+        )
+        PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=queries.INSERT_PRIVATE_TRANSACTIONS,
+            filename=df_private_transactions_filename
+        )
+
+    def insert_private_rental(**kwargs):
+        ti = kwargs["ti"]
+        df_private_rental_filename = ti.xcom_pull(
+            task_ids="transform_private_transactions_and_rental", key="df_private_rental_transformed"
+        )
+        PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=queries.INSERT_PRIVATE_RENTAL,
+            filename=df_private_rental_filename
+        )
+
+    def insert_hdb_information(**kwargs):
+        ti = kwargs["ti"]
+        df_hdb_info_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_hdb_information"
+        )
+        PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=queries.INSERT_HDB_INFORMATION,
+            filename=df_hdb_info_filename
+        )
+
+    def insert_rental_flats(**kwargs):
+        ti = kwargs["ti"]
+        df_rental_flats_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_flat_rental"
+        )
+        PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=queries.INSERT_RENTAL_FLATS,
+            filename=df_rental_flats_filename
+        )
+
 
     extract_ura_data_task = PythonOperator(
         task_id="extract_ura_data",
@@ -186,98 +270,42 @@ with DAG(
 
     insert_salesperson_information = PythonOperator(
         task_id="insert_salesperson_information",
-        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=sql,
-            filename=filepath
-        ),
-        op_kwargs={
-            "sql": queries.INSERT_SALESPERSON_INFORMATION,
-            "filepath": "/opt/airflow/dags/data/salesperson_info.csv"
-        },
+        python_callable=insert_salesperson_information,
     )
 
     insert_salesperson_transactions = PythonOperator(
         task_id="insert_salesperson_transactions",
-        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=sql,
-            filename=filepath
-        ),
-        op_kwargs={
-            "sql": queries.INSERT_SALESPERSON_TRANSACTIONS,
-            "filepath": "/opt/airflow/dags/data/salesperson_transactions_transformed.csv"
-        },
+        python_callable=insert_salesperson_transactions,
     )
 
     insert_districts = PythonOperator(
         task_id="insert_districts",
-        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=sql,
-            filename=filepath
-        ),
-        op_kwargs={
-            "sql": queries.INSERT_DISTRICTS,
-            "filepath": "/opt/airflow/dags/data/districts_transformed.csv"
-        },
+        python_callable=insert_districts,
     )
 
     insert_private_transactions = PythonOperator(
         task_id="insert_private_transactions",
-        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=sql,
-            filename=filepath
-        ),
-        op_kwargs={
-            "sql": queries.INSERT_PRIVATE_TRANSACTIONS,
-            "filepath": "/opt/airflow/dags/data/private_transactions_transformed.csv"
-        },
+        python_callable=insert_private_transactions,
     )
 
     insert_private_rental = PythonOperator(
         task_id="insert_private_rental",
-        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=sql,
-            filename=filepath
-        ),
-        op_kwargs={
-            "sql": queries.INSERT_PRIVATE_RENTAL,
-            "filepath": "/opt/airflow/dags/data/private_rental_transformed.csv"
-        },
+        python_callable=insert_private_rental,
     )
 
     insert_hdb_information = PythonOperator(
         task_id="insert_hdb_information",
-        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=sql,
-            filename=filepath
-        ),
-        op_kwargs={
-            "sql": queries.INSERT_HDB_INFORMATION,
-            "filepath": "/opt/airflow/dags/data/hdb_information.csv"
-        },
+        python_callable=insert_hdb_information,
     )
 
     insert_resale_flats = PythonOperator(
         task_id="insert_resale_flats",
-        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=sql,
-            filename=filepath
-        ),
-        op_kwargs={
-            "sql": queries.INSERT_RESALE_FLATS,
-            "filepath": "/opt/airflow/dags/data/resale_flats_transformed.csv"
-        },
+        python_callable=insert_resale_flats,
     )
 
     insert_rental_flats = PythonOperator(
         task_id="insert_rental_flats",
-        python_callable=lambda sql, filepath: PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=sql,
-            filename=filepath
-        ),
-        op_kwargs={
-            "sql": queries.INSERT_RENTAL_FLATS,
-            "filepath": "/opt/airflow/dags/data/flat_rental.csv"
-        },
+        python_callable=insert_rental_flats,
     )
 
     # create a postgres operator to execute the create_tables_query
