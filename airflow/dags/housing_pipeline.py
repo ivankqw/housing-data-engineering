@@ -138,8 +138,8 @@ with DAG(
 
     def transform_salesperson_transactions(**kwargs):
         ti = kwargs["ti"]
-        df_resale_flat_transactions_filename = ti.xcom_pull(
-            task_ids="extract_datagovsg_data", key="df_resale_flat_transactions"
+        df_salesperson_trans_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_salesperson_trans"
         )
         print("Transforming salesperson_transactions...")
         df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename)
