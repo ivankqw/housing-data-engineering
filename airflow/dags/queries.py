@@ -24,8 +24,7 @@ CREATE_TABLES = """
         
         CREATE TABLE IF NOT EXISTS districts (
             postal_district INT,
-            postal_sector VARCHAR(255),
-            general_location VARCHAR(255)
+            postal_sector VARCHAR(255)
         );
         
         CREATE TABLE IF NOT EXISTS private_transactions (
