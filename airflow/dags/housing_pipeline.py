@@ -72,7 +72,7 @@ with DAG(
         data_path = "/opt/airflow/dags/data"
         data_path_resale_flat_transactions = data_path + "/resale_flat_transactions.csv"
         data_path_salesperson_info = data_path + "/salesperson_info.csv"
-        data_path_salesperson_trans = data_path + "/salesperson_trans.csv"
+        data_path_salesperson_trans = data_path + "/salesperson_transactions.csv"
         data_path_flat_rental = data_path + "/flat_rental.csv"
         data_path_hdb_information = data_path + "/hdb_information.csv"
 

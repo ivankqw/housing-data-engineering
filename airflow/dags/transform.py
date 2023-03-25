@@ -21,6 +21,12 @@ def read_and_transform_districts():
     # remove whitespace in postal sector
     districts['Postal Sector'] = districts['Postal Sector'].str.strip()
 
+    # drop the general location column
+    districts = districts.drop(columns=['General Location'])
+
+    # remove duplicate rows
+    districts = districts.drop_duplicates()
+
     return districts
 
 def transform_resale_flats(filename, df_districts):
@@ -49,9 +55,21 @@ def transform_resale_flats(filename, df_districts):
     # add dynamic programming to cache the results if same address is called again
     dict1 = {}
 
+    # read addresses.csv, if file exists and populate dict1
+    try:
+        addresses = pd.read_csv(data_path + 'addresses.csv')
+        print(addresses.shape)
+        print("Addresses file exists")
+        for index, row in addresses.iterrows():
+            dict1[row['address']] = (row['postal'], row['x'], row['y'], row['lat'], row['lon'])
+        
+    except:
+        pass
+
     def get_info_from_street_name(address):
         # if address is in dict1, return the value
         if address in dict1:
+            # print("Address in dict1", address, dict1[address])
             return dict1[address]
         # else call the api and add to dict1
         else:
@@ -84,6 +102,11 @@ def transform_resale_flats(filename, df_districts):
 
     # apply get_district_from_postal function to each row using a new column created by postal code
     resale_flats['district'] = resale_flats['postal'].apply(get_district_from_postal)
+
+    # save dict1 to a csv file, with the first column named 'address' and the rest named 'postal', 'x', 'y', 'lat', 'lon'
+    df = pd.DataFrame.from_dict(dict1, orient='index', columns=['postal', 'x', 'y', 'lat', 'lon'])
+    df.index.name = 'address'
+    df.to_csv(data_path + 'addresses.csv')
 
     # remove rows with district as NIL
     resale_flats = resale_flats[resale_flats['district'] != 'NIL']
