@@ -27,6 +27,9 @@ def read_and_transform_districts():
     # remove duplicate rows
     districts = districts.drop_duplicates()
 
+    # remove rows where postal sector is not 2 digit
+    districts = districts[districts['Postal Sector'].str.len() == 2]
+
     return districts
 
 def transform_resale_flats(filename, df_districts):
