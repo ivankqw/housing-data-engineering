@@ -21,3 +21,9 @@ airflow/dags/__pycache__
 airflow/plugins/*
 airflow/logs/*
 .env
+
+# Include
+!airflow/dags/data/addresses.csv
+
+
+
