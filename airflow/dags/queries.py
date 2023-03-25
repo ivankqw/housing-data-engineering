@@ -10,18 +10,18 @@ CREATE_TABLES = """
 
 
         CREATE TABLE IF NOT EXISTS salesperson_information (
-            registration_end_date VARCHAR(255),
+            registration_end_date DATE,
             estate_agent_license_no VARCHAR(255),
             salesperson_name VARCHAR(255),
             registration_no VARCHAR(255),
-            registration_start_date VARCHAR(255),
+            registration_start_date DATE,
             estate_agent_name VARCHAR(255),
-            _id INT NOT NULL        
+            _id INT NOT NULL PRIMARY KEY
         );
         
         CREATE TABLE IF NOT EXISTS salesperson_transactions (
             town VARCHAR(255),
-            _id INT NOT NULL,
+            _id INT NOT NULL PRIMARY KEY,
             district VARCHAR(255),
             salesperson_reg_num VARCHAR(255),
             salesperson_name VARCHAR(255),
@@ -33,101 +33,101 @@ CREATE_TABLES = """
         );
         
         CREATE TABLE IF NOT EXISTS districts (
-            postal_district INT,
-            postal_sector VARCHAR(255)
+            postal_district INT NOT NULL,
+            postal_sector INT NOT NUL PRIMARY KEY
         );
         
         CREATE TABLE IF NOT EXISTS private_transactions (
-            area VARCHAR(255),
+            area DECIMAL(10,2),
             floor_range VARCHAR(255),
-            number_of_units VARCHAR(255),
+            number_of_units INT,
             contract_date VARCHAR(255),
-            type_of_sale VARCHAR(255),
-            price VARCHAR(255),
+            type_of_sale INT,
+            price INT,
             property_type VARCHAR(255),
-            district VARCHAR(255),
+            district INT,
             type_of_area VARCHAR(255),
             tenure VARCHAR(255),
             nett_price VARCHAR(255),
             street_name VARCHAR(255),
             project_name VARCHAR(255),
             market_segment VARCHAR(255),
-            month VARCHAR(255),
-            year VARCHAR(255)
+            month INT,
+            year INT
         );
         
         CREATE TABLE IF NOT EXISTS private_rental (
             area_sqm VARCHAR(255),
             lease_date VARCHAR(255),
             property_type VARCHAR(255),
-            district VARCHAR(255),
+            district INT,
             area_sqft VARCHAR(255),
-            number_of_bedrooms VARCHAR(255),
-            rental VARCHAR(255),
+            number_of_bedrooms DECIMAL(10,2),
+            rental INT,
             street_name VARCHAR(255),
             project_name VARCHAR(255),
-            month VARCHAR(255),
-            year VARCHAR(255)
+            month INT,
+            year INT
         );
                 
         CREATE TABLE IF NOT EXISTS hdb_information (
-            year_completed VARCHAR(255),
-            multigen_sold VARCHAR(255),
+            year_completed INT,
+            multigen_sold INT,
             bldg_contract_town VARCHAR(255),
             multistorey_carpark VARCHAR(255),
             street VARCHAR(255),
-            total_dwelling_units VARCHAR(255),
+            total_dwelling_units INT,
             blk_no VARCHAR(255),
-            exec_sold VARCHAR(255),
-            max_floor_lvl VARCHAR(255),
+            exec_sold INT,
+            max_floor_lvl INT,
             residential VARCHAR(255),
-            one_room_sold VARCHAR(255),
+            one_room_sold INT,
             precinct_pavilion VARCHAR(255),
-            other_room_rental VARCHAR(255),
-            five_room_sold VARCHAR(255),
-            three_room_sold VARCHAR(255),
+            other_room_rental INT,
+            five_room_sold INT,
+            three_room_sold INT,
             commercial VARCHAR(255),
-            four_room_sold VARCHAR(255),
+            four_room_sold INT,
             miscellaneous VARCHAR(255),
-            studio_apartment_sold VARCHAR(255),
-            two_room_rental VARCHAR(255),
-            two_room_sold VARCHAR(255),
-            one_room_rental VARCHAR(255),
-            three_room_rental VARCHAR(255),
+            studio_apartment_sold INT,
+            two_room_rental INT,
+            two_room_sold INT,
+            one_room_rental INT,
+            three_room_rental INT,
             market_hawker VARCHAR(255),
-            _id INT NOT NULL
+            _id INT NOT NULL PRIMARY KEY
         );
                
         CREATE TABLE IF NOT EXISTS resale_flats (
             town VARCHAR(255),
             flat_type VARCHAR(255),
             flat_model VARCHAR(255),
-            floor_area_sqm VARCHAR(255),
+            floor_area_sqm FLOAT,
             street_name VARCHAR(255),
-            resale_price VARCHAR(255),
-            month VARCHAR(255),
+            resale_price FLOAT,
+            month INT,
             remaining_lease VARCHAR(255),
-            lease_commence_date VARCHAR(255),
+            lease_commence_date INT,
             storey_range VARCHAR(255),
-            id INT NOT NULL,
+            id INT NOT NULL PRIMARY KEY,
             block VARCHAR(255),
-            year VARCHAR(255),
+            year INT,
             street_name_with_block VARCHAR(255),
-            postal VARCHAR(255),
+            postal INT,
             x_coord VARCHAR(255),
             y_coord VARCHAR(255),
             latitude VARCHAR(255),
             longitude VARCHAR(255),
-            district VARCHAR(255)
+            district INT
         );
     
         CREATE TABLE IF NOT EXISTS rental_flats (
             town VARCHAR(255),
             flat_type VARCHAR(255),
-            monthly_rent VARCHAR(255),
+            monthly_rent INT,
             street_name VARCHAR(255),
             rent_approval_date VARCHAR(255),
-            _id INT NOT NULL,
+            _id INT NOT NULL PRIMARY KEY,
             block VARCHAR(255)
         );
     """
@@ -187,5 +187,15 @@ INSERT_RENTAL_FLATS = """
         DELIMITER ','
         CSV HEADER;
     """
+
+ALTER_TABLES = """            
+    ALTER TABLE salesperson_transactions ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
+    ALTER TABLE salesperson_transactions ADD FOREIGN KEY (salesperson_reg_num) REFERENCES salesperson_information(registration_no);
+    ALTER TABLE private_transactions ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
+    ALTER TABLE private_rental ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
+    ALTER TABLE resale_flats ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
+    ALTER TABLE rental_flats ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
+"""
+
 
 

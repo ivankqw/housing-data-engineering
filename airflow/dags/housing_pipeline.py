@@ -283,5 +283,12 @@ with DAG(
         },
     )
 
-    [extract_ura_data_task, extract_datagovsg_data_task] >> transform_task >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats]
+    # create a postgres operator to execute the create_tables_query
+    alter_tables = PostgresOperator(
+        task_id="alter_tables",
+        postgres_conn_id="db_localhost",
+        sql=queries.ALTER_TABLES,
+    )
+
+    [extract_ura_data_task, extract_datagovsg_data_task] >> transform_task >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats] >> alter_tables
 
