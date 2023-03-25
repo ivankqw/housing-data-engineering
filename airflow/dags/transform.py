@@ -85,6 +85,9 @@ def transform_resale_flats(filename, df_districts):
     # apply get_district_from_postal function to each row using a new column created by postal code
     resale_flats['district'] = resale_flats['postal'].apply(get_district_from_postal)
 
+    # remove rows with district as NIL
+    resale_flats = resale_flats[resale_flats['district'] != 'NIL']
+
     return resale_flats
 
 def transform_private_transactions_and_rental(filename_private_transactions, filename_private_rental, df_districts):
