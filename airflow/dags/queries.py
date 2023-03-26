@@ -39,6 +39,7 @@ CREATE_TABLES = """
         );
         
         CREATE TABLE IF NOT EXISTS private_transactions (
+            _id INT NOT NULL PRIMARY KEY,
             area DECIMAL(10,2),
             floor_range VARCHAR(255),
             number_of_units INT,
@@ -58,6 +59,7 @@ CREATE_TABLES = """
         );
         
         CREATE TABLE IF NOT EXISTS private_rental (
+            _id INT NOT NULL PRIMARY KEY
             area_sqm VARCHAR(255),
             lease_date VARCHAR(255),
             property_type VARCHAR(255),

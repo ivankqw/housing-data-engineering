@@ -168,7 +168,7 @@ with DAG(
     def insert_districts(**kwargs):
         ti = kwargs["ti"]
         df_districts_filename = ti.xcom_pull(
-            task_ids="al;", key="df_districts"
+            task_ids="transform_resale_flat_transactions", key="df_districts"
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
             sql=queries.INSERT_DISTRICTS,
