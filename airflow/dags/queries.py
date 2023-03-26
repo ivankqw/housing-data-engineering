@@ -34,7 +34,7 @@ CREATE_TABLES = """
         );
         
         CREATE TABLE IF NOT EXISTS districts (
-            postal_district INT NOT NULL,
+            postal_district INT,
             postal_sector INT NOT NULL PRIMARY KEY
         );
         
@@ -59,7 +59,7 @@ CREATE_TABLES = """
         );
         
         CREATE TABLE IF NOT EXISTS private_rental (
-            _id INT NOT NULL PRIMARY KEY
+            _id INT NOT NULL PRIMARY KEY,
             area_sqm VARCHAR(255),
             lease_date VARCHAR(255),
             property_type VARCHAR(255),
@@ -191,13 +191,15 @@ INSERT_RENTAL_FLATS = """
         CSV HEADER;
     """
 
-ALTER_TABLES = """            
-    ALTER TABLE salesperson_transactions ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
-    ALTER TABLE salesperson_transactions ADD FOREIGN KEY (salesperson_reg_num) REFERENCES salesperson_information(registration_no);
-    ALTER TABLE private_transactions ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
-    ALTER TABLE private_rental ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
-    ALTER TABLE resale_flats ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
-    ALTER TABLE rental_flats ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
+ALTER_TABLES = """
+    ALTER TABLE districts ADD CONSTRAINT unique_postal_district UNIQUE (postal_district);            
+    ALTER TABLE salesperson_information ADD CONSTRAINT unique_registration_no UNIQUE (registration_no);
+    ALTER TABLE salesperson_transactions ADD CONSTRAINT fk_salesperson_registration_no FOREIGN KEY (salesperson_reg_num) REFERENCES salesperson_information (registration_no);
+    ALTER TABLE salesperson_transactions ADD CONSTRAINT fk_salesperson_district FOREIGN KEY (district) REFERENCES districts (postal_district);
+    ALTER TABLE private_transactions ADD CONSTRAINT fk_private_district FOREIGN KEY (district) REFERENCES districts (postal_district);
+    ALTER TABLE private_rental ADD CONSTRAINT fk_private_rental_district FOREIGN KEY (district) REFERENCES districts (postal_district);
+    ALTER TABLE resale_flats ADD CONSTRAINT fk_resale_district FOREIGN KEY (district) REFERENCES districts (postal_district);
+    ALTER TABLE rental_flats ADD CONSTRAINT fk_rental_district FOREIGN KEY (district) REFERENCES districts (postal_district);
 """
 
 
