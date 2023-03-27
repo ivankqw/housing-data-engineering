@@ -149,9 +149,17 @@ with DAG(
         df_salesperson_trans_filename = ti.xcom_pull(
             task_ids="extract_datagovsg_data", key="df_salesperson_trans"
         )
+        df_salesperson_info_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_salesperson_info"
+        )
+
         print("Transforming salesperson_transactions...")
         df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename)
         
+        # for each row in df_salesperson_transactions, check if id is in df_salesperson_info registration_no column, if not then remove row
+        # df_salesperson_transactions = df_salesperson_transactions[df_salesperson_transactions["id"].isin(df_salesperson_info_filename["registration_no"])]
+
+
         data_path = "/opt/airflow/dags/data"
         data_path_salesperson_transactions = data_path + "/salesperson_transactions_transformed.csv"
 
