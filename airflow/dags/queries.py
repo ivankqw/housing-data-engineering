@@ -200,6 +200,3 @@ ALTER_TABLES = """
     ALTER TABLE resale_flats ADD CONSTRAINT fk_resale_district FOREIGN KEY (district) REFERENCES districts (postal_district);
     ALTER TABLE rental_flats ADD CONSTRAINT fk_rental_district FOREIGN KEY (district) REFERENCES districts (postal_district);
 """
-
-
-
