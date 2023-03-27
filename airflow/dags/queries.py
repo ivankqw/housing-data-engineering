@@ -8,7 +8,6 @@ CREATE_TABLES = """
         DROP TABLE IF EXISTS resale_flats;
         DROP TABLE IF EXISTS rental_flats;
 
-
         CREATE TABLE IF NOT EXISTS salesperson_information (
             registration_end_date DATE,
             estate_agent_license_no VARCHAR(255),
@@ -35,7 +34,7 @@ CREATE_TABLES = """
         
         CREATE TABLE IF NOT EXISTS districts (
             postal_district INT NOT NULL PRIMARY KEY,
-            postal_sector VARCHAR(255) 
+            postal_sector VARCHAR(255)
         );
         
         CREATE TABLE IF NOT EXISTS private_transactions (
