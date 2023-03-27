@@ -128,9 +128,17 @@ CREATE_TABLES = """
             flat_type VARCHAR(255),
             monthly_rent INT,
             street_name VARCHAR(255),
-            rent_approval_date VARCHAR(255),
             _id INT NOT NULL PRIMARY KEY,
-            block VARCHAR(255)
+            block VARCHAR(255),
+            year INT,
+            month INT,
+            street_name_with_block VARCHAR(255),
+            postal INT,
+            x_coord VARCHAR(255),
+            y_coord VARCHAR(255),
+            latitude VARCHAR(255),
+            longitude VARCHAR(255),
+            district INT
         );
     """
 

@@ -255,7 +255,7 @@ with DAG(
     def insert_rental_flats(**kwargs):
         ti = kwargs["ti"]
         df_rental_flats_filename = ti.xcom_pull(
-            task_ids="extract_datagovsg_data", key="df_flat_rental"
+            task_ids="transform_rental_flats", key="df_rental_flats_transformed"
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
             sql=queries.INSERT_RENTAL_FLATS,
