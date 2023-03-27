@@ -9,6 +9,7 @@ import datagovsg
 import transform
 import os
 import queries
+import pandas as pd
 
 with DAG(
     dag_id="housing_pipeline",
@@ -156,8 +157,9 @@ with DAG(
         print("Transforming salesperson_transactions...")
         df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename)
         
+        df_salesperson_info = pd.read_csv(df_salesperson_info_filename)
         # for each row in df_salesperson_transactions, check if id is in df_salesperson_info registration_no column, if not then remove row
-        # df_salesperson_transactions = df_salesperson_transactions[df_salesperson_transactions["id"].isin(df_salesperson_info_filename["registration_no"])]
+        df_salesperson_transactions = df_salesperson_transactions[df_salesperson_transactions["salesperson_reg_num"].isin(df_salesperson_info["registration_no"])]
 
 
         data_path = "/opt/airflow/dags/data"
@@ -329,7 +331,6 @@ with DAG(
 
     extract_ura_data_task >> transform_private_transactions_and_rental_task
     extract_datagovsg_data_task >> [transform_resale_flat_transactions_task, transform_salesperson_transactions_task]
-
 
     [transform_private_transactions_and_rental_task, transform_resale_flat_transactions_task, transform_salesperson_transactions_task] >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats] >> alter_tables
 
