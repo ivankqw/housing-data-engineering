@@ -160,8 +160,9 @@ with DAG(
         df_salesperson_info = pd.read_csv(df_salesperson_info_filename)
         # for each row in df_salesperson_transactions, check if id is in df_salesperson_info registration_no column, if not then remove row
         df_salesperson_transactions = df_salesperson_transactions[df_salesperson_transactions["salesperson_reg_num"].isin(df_salesperson_info["registration_no"])]
-
-
+        # remove where district is not in the range 1-28
+        df_salesperson_transactions = df_salesperson_transactions[df_salesperson_transactions["district"].isin(range(1, 29))]
+        
         data_path = "/opt/airflow/dags/data"
         data_path_salesperson_transactions = data_path + "/salesperson_transactions_transformed.csv"
 

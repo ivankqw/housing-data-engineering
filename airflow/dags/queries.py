@@ -21,7 +21,7 @@ CREATE_TABLES = """
         CREATE TABLE IF NOT EXISTS salesperson_transactions (
             town VARCHAR(255),
             _id INT NOT NULL PRIMARY KEY,
-            district VARCHAR(255),
+            district INT,
             salesperson_reg_num VARCHAR(255),
             salesperson_name VARCHAR(255),
             transaction_type VARCHAR(255),
