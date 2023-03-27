@@ -34,8 +34,8 @@ CREATE_TABLES = """
         );
         
         CREATE TABLE IF NOT EXISTS districts (
-            postal_district INT,
-            postal_sector INT NOT NULL PRIMARY KEY
+            postal_district INT NOT NULL PRIMARY KEY,
+            postal_sector VARCHAR(255) 
         );
         
         CREATE TABLE IF NOT EXISTS private_transactions (

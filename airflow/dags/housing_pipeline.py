@@ -111,6 +111,10 @@ with DAG(
         data_path_districts = data_path + "/districts_transformed.csv"
 
         df_resale_flats.to_csv(data_path_resale_flats, index=False)
+
+        
+        df_districts = df_districts.groupby("Postal District").agg({"Postal Sector": lambda x: list(x)}).reset_index()
+
         df_districts.to_csv(data_path_districts, index=False)
 
         # push to task instance
