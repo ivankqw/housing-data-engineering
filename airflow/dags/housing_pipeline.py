@@ -155,13 +155,8 @@ with DAG(
         )
 
         print("Transforming salesperson_transactions...")
-        df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename)
+        df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename, df_salesperson_info_filename)
         
-        df_salesperson_info = pd.read_csv(df_salesperson_info_filename)
-        # for each row in df_salesperson_transactions, check if id is in df_salesperson_info registration_no column, if not then remove row
-        df_salesperson_transactions = df_salesperson_transactions[df_salesperson_transactions["salesperson_reg_num"].isin(df_salesperson_info["registration_no"])]
-        # remove where district is not in the range 1-28
-        df_salesperson_transactions = df_salesperson_transactions[df_salesperson_transactions["district"].isin(range(1, 29))]
         
         data_path = "/opt/airflow/dags/data"
         data_path_salesperson_transactions = data_path + "/salesperson_transactions_transformed.csv"
@@ -169,6 +164,23 @@ with DAG(
         df_salesperson_transactions.to_csv(data_path_salesperson_transactions, index=False)
 
         ti.xcom_push("df_salesperson_transactions_transformed", data_path_salesperson_transactions)
+
+    def transform_rental_flats(**kwargs):
+        ti = kwargs["ti"]
+        df_flat_rental_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_flat_rental"
+        )
+
+        print("Transforming rental flats...")
+        df_rental_flats = transform.transform_rental_flats(df_flat_rental_filename, transform.read_and_transform_districts())
+
+        data_path = "/opt/airflow/dags/data"
+        data_path_rental_flats = data_path + "/rental_flats_transformed.csv"
+
+        df_rental_flats.to_csv(data_path_rental_flats, index=False)
+
+        ti.xcom_push("df_rental_flats_transformed", data_path_rental_flats)
+
 
     def insert_resale_flats(**kwargs):
         ti = kwargs["ti"]
@@ -276,6 +288,11 @@ with DAG(
         python_callable=transform_salesperson_transactions,
     )
 
+    transform_rental_flat_task = PythonOperator(
+        task_id="transform_rental_flats",
+        python_callable=transform_rental_flats,
+    )
+
     # create a postgres operator to execute the create_tables_query
     create_tables = PostgresOperator(
         task_id="create_tables",
@@ -331,7 +348,7 @@ with DAG(
     )
 
     extract_ura_data_task >> transform_private_transactions_and_rental_task
-    extract_datagovsg_data_task >> [transform_resale_flat_transactions_task, transform_salesperson_transactions_task]
+    extract_datagovsg_data_task >> [transform_resale_flat_transactions_task, transform_salesperson_transactions_task, transform_rental_flat_task]
 
-    [transform_private_transactions_and_rental_task, transform_resale_flat_transactions_task, transform_salesperson_transactions_task] >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats] >> alter_tables
+    [transform_rental_flat_task, transform_private_transactions_and_rental_task, transform_resale_flat_transactions_task, transform_salesperson_transactions_task] >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats] >> alter_tables
 
