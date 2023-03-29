@@ -8,7 +8,6 @@ CREATE_TABLES = """
         DROP TABLE IF EXISTS resale_flats;
         DROP TABLE IF EXISTS rental_flats;
 
-
         CREATE TABLE IF NOT EXISTS salesperson_information (
             registration_end_date DATE,
             estate_agent_license_no VARCHAR(255),
@@ -22,7 +21,7 @@ CREATE_TABLES = """
         CREATE TABLE IF NOT EXISTS salesperson_transactions (
             town VARCHAR(255),
             _id INT NOT NULL PRIMARY KEY,
-            district VARCHAR(255),
+            district INT,
             salesperson_reg_num VARCHAR(255),
             salesperson_name VARCHAR(255),
             transaction_type VARCHAR(255),
@@ -34,8 +33,8 @@ CREATE_TABLES = """
         );
         
         CREATE TABLE IF NOT EXISTS districts (
-            postal_district INT NOT NULL,
-            postal_sector INT NOT NULL PRIMARY KEY
+            postal_district INT NOT NULL PRIMARY KEY,
+            postal_sector VARCHAR(255)
         );
         
         CREATE TABLE IF NOT EXISTS private_transactions (
@@ -59,7 +58,7 @@ CREATE_TABLES = """
         );
         
         CREATE TABLE IF NOT EXISTS private_rental (
-            _id INT NOT NULL PRIMARY KEY
+            _id INT NOT NULL PRIMARY KEY,
             area_sqm VARCHAR(255),
             lease_date VARCHAR(255),
             property_type VARCHAR(255),
@@ -129,9 +128,17 @@ CREATE_TABLES = """
             flat_type VARCHAR(255),
             monthly_rent INT,
             street_name VARCHAR(255),
-            rent_approval_date VARCHAR(255),
             _id INT NOT NULL PRIMARY KEY,
-            block VARCHAR(255)
+            block VARCHAR(255),
+            year INT,
+            month INT,
+            street_name_with_block VARCHAR(255),
+            postal INT,
+            x_coord VARCHAR(255),
+            y_coord VARCHAR(255),
+            latitude VARCHAR(255),
+            longitude VARCHAR(255),
+            district INT
         );
     """
 
@@ -191,14 +198,13 @@ INSERT_RENTAL_FLATS = """
         CSV HEADER;
     """
 
-ALTER_TABLES = """            
-    ALTER TABLE salesperson_transactions ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
-    ALTER TABLE salesperson_transactions ADD FOREIGN KEY (salesperson_reg_num) REFERENCES salesperson_information(registration_no);
-    ALTER TABLE private_transactions ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
-    ALTER TABLE private_rental ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
-    ALTER TABLE resale_flats ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
-    ALTER TABLE rental_flats ADD FOREIGN KEY (district) REFERENCES districts(postal_district);
+ALTER_TABLES = """
+    ALTER TABLE districts ADD CONSTRAINT unique_postal_district UNIQUE (postal_district);            
+    ALTER TABLE salesperson_information ADD CONSTRAINT unique_registration_no UNIQUE (registration_no);
+    ALTER TABLE salesperson_transactions ADD CONSTRAINT fk_salesperson_registration_no FOREIGN KEY (salesperson_reg_num) REFERENCES salesperson_information (registration_no);
+    ALTER TABLE salesperson_transactions ADD CONSTRAINT fk_salesperson_district FOREIGN KEY (district) REFERENCES districts (postal_district);
+    ALTER TABLE private_transactions ADD CONSTRAINT fk_private_district FOREIGN KEY (district) REFERENCES districts (postal_district);
+    ALTER TABLE private_rental ADD CONSTRAINT fk_private_rental_district FOREIGN KEY (district) REFERENCES districts (postal_district);
+    ALTER TABLE resale_flats ADD CONSTRAINT fk_resale_district FOREIGN KEY (district) REFERENCES districts (postal_district);
+    ALTER TABLE rental_flats ADD CONSTRAINT fk_rental_district FOREIGN KEY (district) REFERENCES districts (postal_district);
 """
-
-
-

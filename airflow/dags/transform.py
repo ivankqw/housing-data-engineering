@@ -147,7 +147,7 @@ def transform_private_transactions_and_rental(filename_private_transactions, fil
 
     return private_transactions, private_rental
 
-def transform_salesperson_transactions(filename):
+def transform_salesperson_transactions(filename, df_salesperson_info_filename):
     # read the salesperson_transactions csv file
     salesperson_transactions = pd.read_csv(filename)
 
@@ -163,4 +163,84 @@ def transform_salesperson_transactions(filename):
     # drop transaction_date column
     salesperson_transactions = salesperson_transactions.drop(columns=['transaction_date'])
 
+    df_salesperson_info = pd.read_csv(df_salesperson_info_filename)
+    # for each row in df_salesperson_transactions, check if id is in df_salesperson_info registration_no column, if not then remove row
+    salesperson_transactions = salesperson_transactions[salesperson_transactions["salesperson_reg_num"].isin(df_salesperson_info["registration_no"])]
+    # remove where district is not in the range 1-28
+    salesperson_transactions = salesperson_transactions[salesperson_transactions["district"].isin(range(1, 29))]
+        
+
     return salesperson_transactions
+
+def transform_rental_flats(filename, districts):
+    # read the rental_flats csv file
+    rental_flats = pd.read_csv(filename)
+
+    # rent_approval_date column is in format yyyy-mm, create 2 new columns for year and month
+    rental_flats['rent_approval_date'] = rental_flats['rent_approval_date'].str.split('-')
+    rental_flats['year'] = rental_flats['rent_approval_date'].apply(lambda x: x[0])
+    rental_flats['month'] = rental_flats['rent_approval_date'].apply(lambda x: x[1])
+
+    # drop rent_approval_date column
+    rental_flats = rental_flats.drop(columns=['rent_approval_date'])
+
+
+    dict1 = {}
+
+    # read addresses.csv, if file exists and populate dict1
+    try:
+        addresses = pd.read_csv(data_path + 'addresses.csv')
+        print(addresses.shape)
+        print("Addresses file exists")
+        for index, row in addresses.iterrows():
+            dict1[row['address']] = (row['postal'], row['x'], row['y'], row['lat'], row['lon'])
+        
+    except:
+        pass
+
+    def get_info_from_street_name(address):
+        # if address is in dict1, return the value
+        if address in dict1:
+            # print("Address in dict1", address, dict1[address])
+            return dict1[address]
+        # else call the api and add to dict1
+        else:
+            
+            url = "https://developers.onemap.sg/commonapi/search?searchVal={}&returnGeom=Y&getAddrDetails=Y".format(address)
+            response = requests.get(url)
+            result = response.json()['results'][0]
+            postal = result['POSTAL']
+            x = result['X']
+            y = result['Y']
+            lat = result['LATITUDE']
+            lon = result['LONGITUDE']
+            dict1[address] = (postal, x, y, lat, lon)
+            
+            return (postal, x, y, lat, lon)
+
+    # Apply get_info_from_street_name function to each row using a new column created by concat block and street name
+    rental_flats['street_name_with_block'] = rental_flats['block'] + ' ' + rental_flats['street_name']
+    rental_flats['postal'], rental_flats['x'], rental_flats['y'], rental_flats['lat'], rental_flats['lon'] = zip(*rental_flats['street_name_with_block'].apply(get_info_from_street_name))
+
+    # function to get district from postal code from districts table
+    def get_district_from_postal(postal):
+        postal_sector = str(postal)[:2]
+        value = districts[districts['Postal Sector'] == postal_sector]['Postal District'].values
+        if not len(value):
+            print(postal)
+            return 'NIL'
+        return value[0]
+
+    # apply get_district_from_postal function to each row using a new column created by postal code
+    rental_flats['district'] = rental_flats['postal'].apply(get_district_from_postal)
+
+    # save dict1 to a csv file, with the first column named 'address' and the rest named 'postal', 'x', 'y', 'lat', 'lon'
+    df = pd.DataFrame.from_dict(dict1, orient='index', columns=['postal', 'x', 'y', 'lat', 'lon'])
+    df.index.name = 'address'
+    df.to_csv(data_path + 'addresses.csv')
+
+    # remove rows with district as NIL
+    rental_flats = rental_flats[rental_flats['district'] != 'NIL']
+
+
+    return rental_flats

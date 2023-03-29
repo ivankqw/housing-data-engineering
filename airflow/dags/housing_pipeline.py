@@ -9,6 +9,7 @@ import datagovsg
 import transform
 import os
 import queries
+import pandas as pd
 
 with DAG(
     dag_id="housing_pipeline",
@@ -111,6 +112,10 @@ with DAG(
         data_path_districts = data_path + "/districts_transformed.csv"
 
         df_resale_flats.to_csv(data_path_resale_flats, index=False)
+
+        
+        df_districts = df_districts.groupby("Postal District").agg({"Postal Sector": lambda x: list(x)}).reset_index()
+
         df_districts.to_csv(data_path_districts, index=False)
 
         # push to task instance
@@ -145,8 +150,13 @@ with DAG(
         df_salesperson_trans_filename = ti.xcom_pull(
             task_ids="extract_datagovsg_data", key="df_salesperson_trans"
         )
+        df_salesperson_info_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_salesperson_info"
+        )
+
         print("Transforming salesperson_transactions...")
-        df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename)
+        df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename, df_salesperson_info_filename)
+        
         
         data_path = "/opt/airflow/dags/data"
         data_path_salesperson_transactions = data_path + "/salesperson_transactions_transformed.csv"
@@ -154,6 +164,23 @@ with DAG(
         df_salesperson_transactions.to_csv(data_path_salesperson_transactions, index=False)
 
         ti.xcom_push("df_salesperson_transactions_transformed", data_path_salesperson_transactions)
+
+    def transform_rental_flats(**kwargs):
+        ti = kwargs["ti"]
+        df_flat_rental_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_flat_rental"
+        )
+
+        print("Transforming rental flats...")
+        df_rental_flats = transform.transform_rental_flats(df_flat_rental_filename, transform.read_and_transform_districts())
+
+        data_path = "/opt/airflow/dags/data"
+        data_path_rental_flats = data_path + "/rental_flats_transformed.csv"
+
+        df_rental_flats.to_csv(data_path_rental_flats, index=False)
+
+        ti.xcom_push("df_rental_flats_transformed", data_path_rental_flats)
+
 
     def insert_resale_flats(**kwargs):
         ti = kwargs["ti"]
@@ -228,7 +255,7 @@ with DAG(
     def insert_rental_flats(**kwargs):
         ti = kwargs["ti"]
         df_rental_flats_filename = ti.xcom_pull(
-            task_ids="extract_datagovsg_data", key="df_flat_rental"
+            task_ids="transform_rental_flats", key="df_rental_flats_transformed"
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
             sql=queries.INSERT_RENTAL_FLATS,
@@ -259,6 +286,11 @@ with DAG(
     transform_salesperson_transactions_task = PythonOperator(
         task_id="transform_salesperson_transactions",
         python_callable=transform_salesperson_transactions,
+    )
+
+    transform_rental_flat_task = PythonOperator(
+        task_id="transform_rental_flats",
+        python_callable=transform_rental_flats,
     )
 
     # create a postgres operator to execute the create_tables_query
@@ -316,8 +348,7 @@ with DAG(
     )
 
     extract_ura_data_task >> transform_private_transactions_and_rental_task
-    extract_datagovsg_data_task >> [transform_resale_flat_transactions_task, transform_salesperson_transactions_task]
+    extract_datagovsg_data_task >> [transform_resale_flat_transactions_task, transform_salesperson_transactions_task, transform_rental_flat_task]
 
-
-    [transform_private_transactions_and_rental_task, transform_resale_flat_transactions_task, transform_salesperson_transactions_task] >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats] >> alter_tables
+    [transform_rental_flat_task, transform_private_transactions_and_rental_task, transform_resale_flat_transactions_task, transform_salesperson_transactions_task] >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats] >> alter_tables
 
