@@ -1,12 +1,12 @@
 CREATE_TABLES = """
-        DROP TABLE IF EXISTS salesperson_information;
         DROP TABLE IF EXISTS salesperson_transactions;
-        DROP TABLE IF EXISTS districts;
+        DROP TABLE IF EXISTS salesperson_information;
         DROP TABLE IF EXISTS private_transactions;
         DROP TABLE IF EXISTS private_rental;
         DROP TABLE IF EXISTS hdb_information;
         DROP TABLE IF EXISTS resale_flats;
         DROP TABLE IF EXISTS rental_flats;
+        DROP TABLE IF EXISTS districts;
 
         CREATE TABLE IF NOT EXISTS salesperson_information (
             registration_end_date DATE,
