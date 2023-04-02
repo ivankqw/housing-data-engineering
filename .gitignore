@@ -25,5 +25,6 @@ airflow/logs/*
 # Include
 !airflow/dags/data/addresses.csv
 
-
+# modelling
+modelling/lightning_logs/*
 
