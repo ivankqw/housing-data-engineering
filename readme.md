@@ -1,8 +1,19 @@
 # Housing Data Engineering Pipeline 
 
-## Main Repository 
+## Description of problem
+The housing market in Singapore is facing several challenges, such as the fragmentation of information across different actors and sources, and the volatility of the market due to external factors such as COVID-19, inflation, and interest rates. 
 
-## Modelling Housing Prices 
+A combination of these challenges makes it difficult for potential buyers, sellers, and investors to make swift and informed decisions about their property transactions.
+
+As such, there is a need for a data pipeline solution that can gather housing information from various sources and analyse it to provide a comprehensive and timely overview of the state of the market in Singapore. 
+
+## Usefulness and importance of gathering and analysing housing data 
+Gathering and analysing housing data from various sources are important and useful because it can help to reduce information asymmetry and increase transparency in the property market, increasing confidence in decision-making.  
+
+Furthermore, it can help to identify emerging trends and patterns in various segments of the housing market, such as price movements, supply and demand dynamics, and rental yields. This has widespread benefits for various actors in the market, helping them make data-driven decisions. 
+
+
+## Application 2: Modelling Housing Prices 
 
 We attempt to model housing prices for the following:
 
