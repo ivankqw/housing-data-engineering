@@ -16,9 +16,9 @@ def get_cpi_df(cpf_df_path):
     # cpi
     cpi_df = pd.read_csv(cpf_df_path)
     # convert cpi month to datetime
-    cpi_df["Month"] = pd.to_datetime(cpi_df["Month"], format="%Y-%m")
+    cpi_df["month"] = pd.to_datetime(cpi_df["month"], format="%Y-%m")
     # rename value to cpi
-    cpi_df = cpi_df.rename(columns={"Value": "cpi"})
+    cpi_df = cpi_df.rename(columns={"value": "cpi"})
     return cpi_df
 
 
@@ -114,8 +114,8 @@ def transform_resale_transactions_ml(
     # like aggregated columns that leak information about the future
     to_remove = [
         "street_name",  # duplicated
-        "x",  # duplicated
-        "y",  # duplicated
+        "x_coord",  # duplicated
+        "y_coord",  # duplicated
         "street_name_with_block",  # duplicated
         "blk_no",  # duplicated
         "bldg_contract_town",  # duplicated (but not exactly) - town
@@ -123,14 +123,14 @@ def transform_resale_transactions_ml(
         "_id_x",  # not needed
         "_id_y",  # not needed
         "exec_sold",  # leaky
-        "1room_rental",  # leaky
-        "1room_sold",  # leaky
-        "2room_rental",  # leaky
-        "2room_sold",  # leaky
-        "3room_rental",  # leaky
-        "3room_sold",  # leaky
-        "4room_sold",  # leaky
-        "5room_sold",  # leaky
+        "one_room_rental",  # leaky
+        "one_room_sold",  # leaky
+        "two_room_rental",  # leaky
+        "two_room_sold",  # leaky
+        "three_room_rental",  # leaky
+        "three_room_sold",  # leaky
+        "four_room_sold",  # leaky
+        "five_room_sold",  # leaky
         "multigen_sold",  # leaky
         "studio_apartment_sold",  # leaky
         "other_room_rental",  # leaky
@@ -170,7 +170,7 @@ def transform_resale_transactions_ml(
     )
 
     # convert cpi month to datetime
-    cpi_df["Month"] = pd.to_datetime(cpi_df["Month"], format="%Y-%m")
+    cpi_df["month"] = pd.to_datetime(cpi_df["month"], format="%Y-%m")
     # rename value to cpi
     cpi_df = cpi_df.rename(columns={"Value": "cpi"})
 
@@ -180,7 +180,7 @@ def transform_resale_transactions_ml(
         cpi_df,
         how="left",
         left_on="month_year",
-        right_on="Month",
+        right_on="month",
     )
 
     # if cpi is null, fill with previous value
@@ -192,8 +192,8 @@ def transform_resale_transactions_ml(
         method="ffill"
     )
 
-    # drop Month column
-    resale_flat_transactions_new = resale_flat_transactions_new.drop(["Month"], axis=1)
+    # drop month column
+    resale_flat_transactions_new = resale_flat_transactions_new.drop(["month"], axis=1)
     # convert to binary variable
     resale_flat_transactions_new["precinct_pavilion"] = resale_flat_transactions_new[
         "precinct_pavilion"
@@ -275,14 +275,14 @@ def transform_flat_rental_ml(cpi_df_path, flat_rental_path):
     flat_rental_df = flat_rental_df.drop(columns=["year", "month"])
     # merge with cpi
     flat_rental_df = flat_rental_df.merge(
-        cpi_df, how="left", left_on="month_year", right_on="Month"
+        cpi_df, how="left", left_on="month_year", right_on="month"
     )
     # sort by month_year
     flat_rental_df = flat_rental_df.sort_values(by="month_year")
     # ffill cpi for missing values
     flat_rental_df["cpi"] = flat_rental_df["cpi"].fillna(method="ffill")
-    # drop Month column
-    flat_rental_df = flat_rental_df.drop(columns=["Month"])
+    # drop month column
+    flat_rental_df = flat_rental_df.drop(columns=["month"])
     # drop other irrelavant columns
     flat_rental_df = flat_rental_df.drop(
         columns=[
@@ -291,10 +291,10 @@ def transform_flat_rental_ml(cpi_df_path, flat_rental_path):
             "_id",
             "block",
             "street_name_with_block",
-            "x",
-            "y",
-            "lat",
-            "lon",
+            "x_coord",
+            "y_coord",
+            "latitude",
+            "longitude",
             "postal",
         ]
     )
@@ -302,8 +302,6 @@ def transform_flat_rental_ml(cpi_df_path, flat_rental_path):
     flat_rental_df = pd.get_dummies(
         flat_rental_df, columns=["flat_type"], drop_first=True
     )  # prevent multicollinearity
-
-    print(flat_rental_df.columns)
 
     # rename to price
     flat_rental_df = flat_rental_df.rename(columns={"monthly_rent": "price"})
@@ -342,15 +340,15 @@ def transform_private_transactions_ml(cpi_df_path, private_transactions_path):
     # private_transactions_df = pd.read_csv("data/private_transactions_transformed.csv")
     private_transactions_df = pd.read_csv(private_transactions_path)
     private_transactions_df = private_transactions_df.drop(
-        columns=["floorRange", "nettPrice", "street", "project"]
+        columns=["floor_range", "nett_price", "street_name", "project_name"]
     )
     # divide price by noOfUnits to get price per unit
     private_transactions_df["price_per_unit"] = (
-        private_transactions_df["price"] / private_transactions_df["noOfUnits"]
+        private_transactions_df["price"] / private_transactions_df["number_of_units"]
     )
     # drop price and noOfUnits columns
     private_transactions_df = private_transactions_df.drop(
-        columns=["price", "noOfUnits"]
+        columns=["price", "number_of_units"]
     )
     # transform date
     private_transactions_df["month"] = private_transactions_df["month"].astype(str)
@@ -363,29 +361,29 @@ def transform_private_transactions_ml(cpi_df_path, private_transactions_path):
     )
     private_transactions_df = private_transactions_df.drop(columns=["year", "month"])
     private_transactions_df = private_transactions_df.merge(
-        cpi_df, how="left", left_on="month_year", right_on="Month"
+        cpi_df, how="left", left_on="month_year", right_on="month"
     )
     private_transactions_df = private_transactions_df.sort_values(by="month_year")
     private_transactions_df["cpi"] = private_transactions_df["cpi"].fillna(
         method="ffill"
     )
-    private_transactions_df = private_transactions_df.drop(columns=["Month"])
+    private_transactions_df = private_transactions_df.drop(columns=["month"])
 
     # convert typeOfArea to dummy variables
     private_transactions_df = pd.get_dummies(
-        private_transactions_df, columns=["typeOfArea"], drop_first=True
+        private_transactions_df, columns=["type_of_area"], drop_first=True
     )  # prevent multicollinearity
     # convert propertyType to dummy variables
     private_transactions_df = pd.get_dummies(
-        private_transactions_df, columns=["propertyType"], drop_first=True
+        private_transactions_df, columns=["property_type"], drop_first=True
     )  # prevent multicollinearity
     # convert typeOfSale to dummy variables
     private_transactions_df = pd.get_dummies(
-        private_transactions_df, columns=["typeOfSale"], drop_first=True
+        private_transactions_df, columns=["type_of_sale"], drop_first=True
     )  # prevent multicollinearity
     # convert marketSegment to dummy variables
     private_transactions_df = pd.get_dummies(
-        private_transactions_df, columns=["marketSegment"], drop_first=True
+        private_transactions_df, columns=["market_segment"], drop_first=True
     )  # prevent multicollinearity
     # transform tenure into a binary variable whether freehold or not
     private_transactions_df["is_freehold"] = private_transactions_df["tenure"].apply(
@@ -411,19 +409,19 @@ def transform_private_transactions_ml(cpi_df_path, private_transactions_path):
                 "area": "median",
                 # "noOfUnits": "sum",
                 "is_freehold": "sum",
-                "typeOfArea_Strata": "sum",
-                "propertyType_Condominium": "sum",
-                "propertyType_Detached": "sum",
-                "propertyType_Executive Condominium": "sum",
-                "propertyType_Semi-detached": "sum",
-                "propertyType_Strata Semi-detached": "sum",
-                "propertyType_Strata Detached": "sum",
-                "propertyType_Strata Terrace": "sum",
-                "propertyType_Terrace": "sum",
-                "typeOfSale_2": "sum",
-                "typeOfSale_3": "sum",
-                "marketSegment_OCR": "sum",
-                "marketSegment_RCR": "sum",
+                "type_of_area_Strata": "sum",
+                "property_type_Condominium": "sum",
+                "property_type_Detached": "sum",
+                "property_type_Executive Condominium": "sum",
+                "property_type_Semi-detached": "sum",
+                "property_type_Strata Semi-detached": "sum",
+                "property_type_Strata Detached": "sum",
+                "property_type_Strata Terrace": "sum",
+                "property_type_Terrace": "sum",
+                "type_of_sale_2": "sum",
+                "type_of_sale_3": "sum",
+                "market_segment_OCR": "sum",
+                "market_segment_RCR": "sum",
                 "is_freehold": "sum",
             }
         )
@@ -436,24 +434,25 @@ def transform_private_transactions_ml(cpi_df_path, private_transactions_path):
     )
 
     # return private_transactions_df_grouped_dict
-    with open(data_path + "private_transactions_df_grouped_dict.pkl", "wb") as f:
-        pickle.dump(private_transactions_df_grouped_dict, f)
+    # with open(data_path + "private_transactions_df_grouped_dict.pkl", "wb") as f:
+    #     pickle.dump(private_transactions_df_grouped_dict, f)
+    return private_transactions_df_grouped_dict
 
 
 def transform_private_rental_ml(cpi_df_path, private_rental_df_path):
     # private_rental_df = pd.read_csv("data/private_rental_transformed.csv")
-    cpi_df = pd.read_csv(cpi_df_path)
+    cpi_df = get_cpi_df(cpi_df_path)
     private_rental_df = pd.read_csv(private_rental_df_path)
-    private_rental_df = private_rental_df.drop(columns=["street", "project"])
+    private_rental_df = private_rental_df.drop(columns=["street_name", "project_name"])
     # convert areaSqft to dummy variables
     private_rental_df = pd.get_dummies(
-        private_rental_df, columns=["areaSqft"], drop_first=True
+        private_rental_df, columns=["area_sqft"], drop_first=True
     )  # prevent multicollinearity
     private_rental_df = pd.get_dummies(
-        private_rental_df, columns=["areaSqm"], drop_first=True
+        private_rental_df, columns=["area_sqm"], drop_first=True
     )  # prevent multicollinearity
     private_rental_df = pd.get_dummies(
-        private_rental_df, columns=["propertyType"], drop_first=True
+        private_rental_df, columns=["property_type"], drop_first=True
     )  # prevent multicollinearity
     private_rental_df["month"] = private_rental_df["month"].astype(str)
     private_rental_df["year"] = private_rental_df["year"].astype(str)
@@ -463,16 +462,18 @@ def transform_private_rental_ml(cpi_df_path, private_rental_df_path):
     private_rental_df["month_year"] = pd.to_datetime(
         private_rental_df["month_year"], format="%Y-%m"
     )
-    private_rental_df = private_rental_df.drop(columns=["year", "month", "leaseDate"])
+    private_rental_df = private_rental_df.drop(columns=["year", "month", "lease_date"])
+    # cpi month year to datetime
+    # cpi_df["month"] = pd.to_datetime(cpi_df["month"], format="%Y-%m")
     private_rental_df = private_rental_df.merge(
-        cpi_df, how="left", left_on="month_year", right_on="Month"
+        cpi_df, how="left", left_on="month_year", right_on="month"
     )
     private_rental_df = private_rental_df.sort_values(by="month_year")
     private_rental_df["cpi"] = private_rental_df["cpi"].fillna(method="ffill")
-    private_rental_df = private_rental_df.drop(columns=["Month"])
+    private_rental_df = private_rental_df.drop(columns=["month"])
 
     # rename to price
-    private_rental_df.rename(columns={"rent": "price"}, inplace=True)
+    private_rental_df.rename(columns={"rental": "price"}, inplace=True)
 
     # lag all except price by 1
     lag_cols = private_rental_df.columns.drop(["price", "month_year"])
@@ -481,11 +482,11 @@ def transform_private_rental_ml(cpi_df_path, private_rental_df_path):
     # create dict for columns to group by
     agg_dict = {}
     for col in private_rental_df.columns:
-        if "areaSqft" in col:
+        if "area_sqft" in col:
             agg_dict[col] = "sum"
-        elif "areaSqm" in col:
+        elif "area_sqm" in col:
             agg_dict[col] = "sum"
-        elif "propertyType" in col:
+        elif "property_type" in col:
             agg_dict[col] = "sum"
     agg_dict["cpi"] = "first"
     agg_dict["price"] = "median"
@@ -498,3 +499,4 @@ def transform_private_rental_ml(cpi_df_path, private_rental_df_path):
     )
 
     private_rental_df_grouped_dict = get_ts_per_district(private_rental_df_grouped)
+    return private_rental_df_grouped_dict
