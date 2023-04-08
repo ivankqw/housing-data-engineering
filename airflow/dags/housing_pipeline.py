@@ -1,3 +1,8 @@
+import sys
+sys.path.append('/opt/airflow/extract')
+sys.path.append('/opt/airflow/load')
+sys.path.append('/opt/airflow/transform')
+
 from airflow import DAG
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
@@ -6,6 +11,7 @@ from airflow.operators.bash import BashOperator
 from airflow.utils.dates import days_ago
 import ura
 import datagovsg
+import singstat
 import transform
 import os
 import queries
@@ -18,6 +24,16 @@ with DAG(
     start_date=days_ago(2),
     tags=["is3107"],
 ) as dag:
+    
+    def extract_singstat_data(**kwargs):
+        print("Getting Singstat data...")
+        data_path = "/opt/airflow/dags/data"
+        df_cpi = singstat.get_cpi()
+        df_cpi.to_csv(data_path + "/cpi.csv", index=False)
+        print("Singstat data obtained.")
+        # push to task instance
+        ti = kwargs["ti"]
+        ti.xcom_push("df_cpi", df_cpi)
 
     def extract_ura_data(**kwargs):
         print("Getting URA data...")
@@ -68,8 +84,9 @@ with DAG(
                 "5room_sold": "five_room_sold",
                 "1room_rental": "one_room_rental",
                 "2room_rental": "two_room_rental",
-                "3room_rental": "three_room_rental"
-                })
+                "3room_rental": "three_room_rental",
+            }
+        )
 
         data_path = "/opt/airflow/dags/data"
         data_path_resale_flat_transactions = data_path + "/resale_flat_transactions.csv"
@@ -103,8 +120,10 @@ with DAG(
         )
 
         # transform
-        df_districts = transform.read_and_transform_districts()
-        df_resale_flats = transform.transform_resale_flats(df_resale_flat_transactions_filename, df_districts)
+        df_districts = transform.read_and_transform_districts() # type: ignore
+        df_resale_flats = transform.transform_resale_flats( # type: ignore
+            df_resale_flat_transactions_filename, df_districts
+        )
 
         # save to csv
         data_path = "/opt/airflow/dags/data"
@@ -113,8 +132,11 @@ with DAG(
 
         df_resale_flats.to_csv(data_path_resale_flats, index=False)
 
-        
-        df_districts = df_districts.groupby("Postal District").agg({"Postal Sector": lambda x: list(x)}).reset_index()
+        df_districts = (
+            df_districts.groupby("Postal District")
+            .agg({"Postal Sector": lambda x: list(x)})
+            .reset_index()
+        )
 
         df_districts.to_csv(data_path_districts, index=False)
 
@@ -133,16 +155,25 @@ with DAG(
         )
 
         print("Transforming private transactions and rental...")
-        df_private_transactions, df_private_rental = transform.transform_private_transactions_and_rental(df_private_transactions_filename, df_private_rental_filename)
-        
+        (
+            df_private_transactions,
+            df_private_rental,
+        ) = transform.transform_private_transactions_and_rental( # type: ignore
+            df_private_transactions_filename, df_private_rental_filename
+        )
+
         data_path = "/opt/airflow/dags/data"
-        data_path_private_transactions = data_path + "/private_transactions_transformed.csv"
+        data_path_private_transactions = (
+            data_path + "/private_transactions_transformed.csv"
+        )
         data_path_private_rental = data_path + "/private_rental_transformed.csv"
 
         df_private_transactions.to_csv(data_path_private_transactions, index=False)
         df_private_rental.to_csv(data_path_private_rental, index=False)
 
-        ti.xcom_push("df_private_transactions_transformed", data_path_private_transactions)
+        ti.xcom_push(
+            "df_private_transactions_transformed", data_path_private_transactions
+        )
         ti.xcom_push("df_private_rental_transformed", data_path_private_rental)
 
     def transform_salesperson_transactions(**kwargs):
@@ -155,15 +186,23 @@ with DAG(
         )
 
         print("Transforming salesperson_transactions...")
-        df_salesperson_transactions = transform.transform_salesperson_transactions(df_salesperson_trans_filename, df_salesperson_info_filename)
-        
-        
+        df_salesperson_transactions = transform.transform_salesperson_transactions( # type: ignore
+            df_salesperson_trans_filename, df_salesperson_info_filename
+        )
+
         data_path = "/opt/airflow/dags/data"
-        data_path_salesperson_transactions = data_path + "/salesperson_transactions_transformed.csv"
+        data_path_salesperson_transactions = (
+            data_path + "/salesperson_transactions_transformed.csv"
+        )
 
-        df_salesperson_transactions.to_csv(data_path_salesperson_transactions, index=False)
+        df_salesperson_transactions.to_csv(
+            data_path_salesperson_transactions, index=False
+        )
 
-        ti.xcom_push("df_salesperson_transactions_transformed", data_path_salesperson_transactions)
+        ti.xcom_push(
+            "df_salesperson_transactions_transformed",
+            data_path_salesperson_transactions,
+        )
 
     def transform_rental_flats(**kwargs):
         ti = kwargs["ti"]
@@ -172,7 +211,9 @@ with DAG(
         )
 
         print("Transforming rental flats...")
-        df_rental_flats = transform.transform_rental_flats(df_flat_rental_filename, transform.read_and_transform_districts())
+        df_rental_flats = transform.transform_rental_flats( # type: ignore
+            df_flat_rental_filename, transform.read_and_transform_districts() # type: ignore
+        )
 
         data_path = "/opt/airflow/dags/data"
         data_path_rental_flats = data_path + "/rental_flats_transformed.csv"
@@ -181,15 +222,13 @@ with DAG(
 
         ti.xcom_push("df_rental_flats_transformed", data_path_rental_flats)
 
-
     def insert_resale_flats(**kwargs):
         ti = kwargs["ti"]
         df_resale_flats_filename = ti.xcom_pull(
             task_ids="transform_resale_flat_transactions", key="df_resale_flats"
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=queries.INSERT_RESALE_FLATS,
-            filename=df_resale_flats_filename
+            sql=queries.INSERT_RESALE_FLATS, filename=df_resale_flats_filename
         )
 
     def insert_districts(**kwargs):
@@ -198,8 +237,7 @@ with DAG(
             task_ids="transform_resale_flat_transactions", key="df_districts"
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=queries.INSERT_DISTRICTS,
-            filename=df_districts_filename
+            sql=queries.INSERT_DISTRICTS, filename=df_districts_filename
         )
 
     def insert_salesperson_information(**kwargs):
@@ -209,37 +247,39 @@ with DAG(
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
             sql=queries.INSERT_SALESPERSON_INFORMATION,
-            filename=df_salesperson_info_filename
+            filename=df_salesperson_info_filename,
         )
 
     def insert_salesperson_transactions(**kwargs):
         ti = kwargs["ti"]
         df_salesperson_transactions_filename = ti.xcom_pull(
-            task_ids="transform_salesperson_transactions", key="df_salesperson_transactions_transformed"
+            task_ids="transform_salesperson_transactions",
+            key="df_salesperson_transactions_transformed",
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
             sql=queries.INSERT_SALESPERSON_TRANSACTIONS,
-            filename=df_salesperson_transactions_filename
+            filename=df_salesperson_transactions_filename,
         )
 
     def insert_private_transactions(**kwargs):
         ti = kwargs["ti"]
         df_private_transactions_filename = ti.xcom_pull(
-            task_ids="transform_private_transactions_and_rental", key="df_private_transactions_transformed"
+            task_ids="transform_private_transactions_and_rental",
+            key="df_private_transactions_transformed",
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
             sql=queries.INSERT_PRIVATE_TRANSACTIONS,
-            filename=df_private_transactions_filename
+            filename=df_private_transactions_filename,
         )
 
     def insert_private_rental(**kwargs):
         ti = kwargs["ti"]
         df_private_rental_filename = ti.xcom_pull(
-            task_ids="transform_private_transactions_and_rental", key="df_private_rental_transformed"
+            task_ids="transform_private_transactions_and_rental",
+            key="df_private_rental_transformed",
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=queries.INSERT_PRIVATE_RENTAL,
-            filename=df_private_rental_filename
+            sql=queries.INSERT_PRIVATE_RENTAL, filename=df_private_rental_filename
         )
 
     def insert_hdb_information(**kwargs):
@@ -248,8 +288,7 @@ with DAG(
             task_ids="extract_datagovsg_data", key="df_hdb_information"
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=queries.INSERT_HDB_INFORMATION,
-            filename=df_hdb_info_filename
+            sql=queries.INSERT_HDB_INFORMATION, filename=df_hdb_info_filename
         )
 
     def insert_rental_flats(**kwargs):
@@ -258,10 +297,8 @@ with DAG(
             task_ids="transform_rental_flats", key="df_rental_flats_transformed"
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
-            sql=queries.INSERT_RENTAL_FLATS,
-            filename=df_rental_flats_filename
+            sql=queries.INSERT_RENTAL_FLATS, filename=df_rental_flats_filename
         )
-
 
     extract_ura_data_task = PythonOperator(
         task_id="extract_ura_data",
@@ -303,42 +340,42 @@ with DAG(
     insert_salesperson_information = PythonOperator(
         task_id="insert_salesperson_information",
         python_callable=insert_salesperson_information,
-    )
+    ) # type: ignore
 
     insert_salesperson_transactions = PythonOperator(
         task_id="insert_salesperson_transactions",
         python_callable=insert_salesperson_transactions,
-    )
+    ) # type: ignore
 
     insert_districts = PythonOperator(
         task_id="insert_districts",
         python_callable=insert_districts,
-    )
+    ) # type: ignore
 
     insert_private_transactions = PythonOperator(
         task_id="insert_private_transactions",
         python_callable=insert_private_transactions,
-    )
+    ) # type: ignore
 
     insert_private_rental = PythonOperator(
         task_id="insert_private_rental",
         python_callable=insert_private_rental,
-    )
+    ) # type: ignore
 
     insert_hdb_information = PythonOperator(
         task_id="insert_hdb_information",
         python_callable=insert_hdb_information,
-    )
+    ) # type: ignore
 
     insert_resale_flats = PythonOperator(
         task_id="insert_resale_flats",
         python_callable=insert_resale_flats,
-    )
+    ) # type: ignore
 
     insert_rental_flats = PythonOperator(
         task_id="insert_rental_flats",
         python_callable=insert_rental_flats,
-    )
+    ) # type: ignore
 
     # create a postgres operator to execute the create_tables_query
     alter_tables = PostgresOperator(
@@ -348,7 +385,29 @@ with DAG(
     )
 
     extract_ura_data_task >> transform_private_transactions_and_rental_task
-    extract_datagovsg_data_task >> [transform_resale_flat_transactions_task, transform_salesperson_transactions_task, transform_rental_flat_task]
+    extract_datagovsg_data_task >> [
+        transform_resale_flat_transactions_task,
+        transform_salesperson_transactions_task,
+        transform_rental_flat_task,
+    ]
 
-    [transform_rental_flat_task, transform_private_transactions_and_rental_task, transform_resale_flat_transactions_task, transform_salesperson_transactions_task] >> create_tables >> [insert_salesperson_information, insert_salesperson_transactions, insert_districts, insert_private_transactions, insert_private_rental, insert_hdb_information, insert_resale_flats, insert_rental_flats] >> alter_tables
-
+    (
+        [
+            transform_rental_flat_task,
+            transform_private_transactions_and_rental_task,
+            transform_resale_flat_transactions_task,
+            transform_salesperson_transactions_task,
+        ]
+        >> create_tables
+        >> [
+            insert_salesperson_information,
+            insert_salesperson_transactions,
+            insert_districts,
+            insert_private_transactions,
+            insert_private_rental,
+            insert_hdb_information,
+            insert_resale_flats,
+            insert_rental_flats,
+        ] # type: ignore
+        >> alter_tables
+    )
