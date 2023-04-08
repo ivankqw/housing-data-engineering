@@ -1,20 +1,16 @@
-import sys
-sys.path.append('/opt/airflow/extract')
-sys.path.append('/opt/airflow/load')
-sys.path.append('/opt/airflow/transform')
-
 from airflow import DAG
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.utils.dates import days_ago
-import ura
-import datagovsg
-import singstat
-import transform
+import extract.ura as ura
+import extract.datagovsg as datagovsg
+import extract.singstat as singstat
+import transform.transform as transform
+import transform.transform_ml as transform_ml
 import os
-import queries
+import load.queries as queries
 import pandas as pd
 
 with DAG(
@@ -24,16 +20,17 @@ with DAG(
     start_date=days_ago(2),
     tags=["is3107"],
 ) as dag:
-    
+
     def extract_singstat_data(**kwargs):
         print("Getting Singstat data...")
         data_path = "/opt/airflow/dags/data"
         df_cpi = singstat.get_cpi()
-        df_cpi.to_csv(data_path + "/cpi.csv", index=False)
+        data_path_cpi = data_path + "/cpi.csv"
+        df_cpi.to_csv(data_path_cpi, index=False)
         print("Singstat data obtained.")
         # push to task instance
         ti = kwargs["ti"]
-        ti.xcom_push("df_cpi", df_cpi)
+        ti.xcom_push("df_cpi", data_path_cpi)
 
     def extract_ura_data(**kwargs):
         print("Getting URA data...")
@@ -120,8 +117,8 @@ with DAG(
         )
 
         # transform
-        df_districts = transform.read_and_transform_districts() # type: ignore
-        df_resale_flats = transform.transform_resale_flats( # type: ignore
+        df_districts = transform.read_and_transform_districts()  # type: ignore
+        df_resale_flats = transform.transform_resale_flats(  # type: ignore
             df_resale_flat_transactions_filename, df_districts
         )
 
@@ -158,7 +155,7 @@ with DAG(
         (
             df_private_transactions,
             df_private_rental,
-        ) = transform.transform_private_transactions_and_rental( # type: ignore
+        ) = transform.transform_private_transactions_and_rental(  # type: ignore
             df_private_transactions_filename, df_private_rental_filename
         )
 
@@ -186,7 +183,7 @@ with DAG(
         )
 
         print("Transforming salesperson_transactions...")
-        df_salesperson_transactions = transform.transform_salesperson_transactions( # type: ignore
+        df_salesperson_transactions = transform.transform_salesperson_transactions(  # type: ignore
             df_salesperson_trans_filename, df_salesperson_info_filename
         )
 
@@ -211,8 +208,8 @@ with DAG(
         )
 
         print("Transforming rental flats...")
-        df_rental_flats = transform.transform_rental_flats( # type: ignore
-            df_flat_rental_filename, transform.read_and_transform_districts() # type: ignore
+        df_rental_flats = transform.transform_rental_flats(  # type: ignore
+            df_flat_rental_filename, transform.read_and_transform_districts()  # type: ignore
         )
 
         data_path = "/opt/airflow/dags/data"
@@ -221,6 +218,13 @@ with DAG(
         df_rental_flats.to_csv(data_path_rental_flats, index=False)
 
         ti.xcom_push("df_rental_flats_transformed", data_path_rental_flats)
+
+    def insert_cpi(**kwargs):
+        ti = kwargs["ti"]
+        df_cpi_filename = ti.xcom_pull(task_ids="extract_cpi_data", key="df_cpi")
+        PostgresHook(postgres_conn_id="db_localhost").copy_expert(
+            sql=queries.INSERT_CPI, filename=df_cpi_filename
+        )
 
     def insert_resale_flats(**kwargs):
         ti = kwargs["ti"]
@@ -300,6 +304,11 @@ with DAG(
             sql=queries.INSERT_RENTAL_FLATS, filename=df_rental_flats_filename
         )
 
+    extract_singstat_data_task = PythonOperator(
+        task_id="extract_singstat_data",
+        python_callable=extract_singstat_data,
+    )
+
     extract_ura_data_task = PythonOperator(
         task_id="extract_ura_data",
         python_callable=extract_ura_data,
@@ -337,45 +346,50 @@ with DAG(
         sql=queries.CREATE_TABLES,
     )
 
+    insert_cpi = PythonOperator(
+        task_id="insert_cpi",
+        python_callable=insert_cpi,
+    )  # type: ignore
+
     insert_salesperson_information = PythonOperator(
         task_id="insert_salesperson_information",
         python_callable=insert_salesperson_information,
-    ) # type: ignore
+    )  # type: ignore
 
     insert_salesperson_transactions = PythonOperator(
         task_id="insert_salesperson_transactions",
         python_callable=insert_salesperson_transactions,
-    ) # type: ignore
+    )  # type: ignore
 
     insert_districts = PythonOperator(
         task_id="insert_districts",
         python_callable=insert_districts,
-    ) # type: ignore
+    )  # type: ignore
 
     insert_private_transactions = PythonOperator(
         task_id="insert_private_transactions",
         python_callable=insert_private_transactions,
-    ) # type: ignore
+    )  # type: ignore
 
     insert_private_rental = PythonOperator(
         task_id="insert_private_rental",
         python_callable=insert_private_rental,
-    ) # type: ignore
+    )  # type: ignore
 
     insert_hdb_information = PythonOperator(
         task_id="insert_hdb_information",
         python_callable=insert_hdb_information,
-    ) # type: ignore
+    )  # type: ignore
 
     insert_resale_flats = PythonOperator(
         task_id="insert_resale_flats",
         python_callable=insert_resale_flats,
-    ) # type: ignore
+    )  # type: ignore
 
     insert_rental_flats = PythonOperator(
         task_id="insert_rental_flats",
         python_callable=insert_rental_flats,
-    ) # type: ignore
+    )  # type: ignore
 
     # create a postgres operator to execute the create_tables_query
     alter_tables = PostgresOperator(
@@ -393,6 +407,7 @@ with DAG(
 
     (
         [
+            extract_singstat_data_task,
             transform_rental_flat_task,
             transform_private_transactions_and_rental_task,
             transform_resale_flat_transactions_task,
@@ -400,6 +415,7 @@ with DAG(
         ]
         >> create_tables
         >> [
+            insert_cpi,
             insert_salesperson_information,
             insert_salesperson_transactions,
             insert_districts,
@@ -408,6 +424,6 @@ with DAG(
             insert_hdb_information,
             insert_resale_flats,
             insert_rental_flats,
-        ] # type: ignore
+        ]  # type: ignore
         >> alter_tables
     )

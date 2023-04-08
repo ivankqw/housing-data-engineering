@@ -8,6 +8,11 @@ CREATE_TABLES = """
         DROP TABLE IF EXISTS rental_flats;
         DROP TABLE IF EXISTS districts;
 
+        CREATE TABLE IF NOT EXISTS cpi (
+            Month DATE NOT NULL PRIMARY KEY,
+            Value FLOAT
+        )
+
         CREATE TABLE IF NOT EXISTS salesperson_information (
             registration_end_date DATE,
             estate_agent_license_no VARCHAR(255),
@@ -142,6 +147,13 @@ CREATE_TABLES = """
         );
     """
 
+INSERT_CPI = """
+        COPY cpi
+        FROM STDIN
+        DELIMITER ','
+        CSV HEADER;
+    """
+
 INSERT_SALESPERSON_INFORMATION = """
         COPY salesperson_information
         FROM STDIN
@@ -199,6 +211,7 @@ INSERT_RENTAL_FLATS = """
     """
 
 ALTER_TABLES = """
+    ALTER TABLE cpi ADD CONSTRAINT unique_month_year UNIQUE (month, year);
     ALTER TABLE districts ADD CONSTRAINT unique_postal_district UNIQUE (postal_district);            
     ALTER TABLE salesperson_information ADD CONSTRAINT unique_registration_no UNIQUE (registration_no);
     ALTER TABLE salesperson_transactions ADD CONSTRAINT fk_salesperson_registration_no FOREIGN KEY (salesperson_reg_num) REFERENCES salesperson_information (registration_no);
