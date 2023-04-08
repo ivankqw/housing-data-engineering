@@ -1,28 +1,20 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import requests
 import time
-from pprint import pprint
 import pickle
 
 data_path = "/opt/airflow/dags/data/"
 
 """helper functions"""
 
-def get_district_name(district_no):
-    # map district name to district number
-    district_mapping_path = data_path + "districts.xlsx"
-    district_mapping = pd.read_excel(district_mapping_path)
-    return district_mapping[district_mapping["Postal District"] == district_no][
-        "General Location"
-    ].values[0]
+
+def get_cpi_from_db():
+    pass
 
 
-def get_cpi_df():
+def get_cpi_df(cpf_df_path):
     # cpi
-    cpi_df = pd.read_csv("data/cpi.csv")
+    cpi_df = pd.read_csv(cpf_df_path)
     # convert cpi month to datetime
     cpi_df["Month"] = pd.to_datetime(cpi_df["Month"], format="%Y-%m")
     # rename value to cpi
@@ -85,14 +77,18 @@ def get_ts_per_district(grouped):
 """transform functions"""
 
 
-def transform_resale_transactions_ml():
-    cpi_df = get_cpi_df()
-    resale_flat_transactions = pd.read_csv("data/resale_flats_transformed.csv")
-    hdb_info = pd.read_csv("data/hdb_information.csv")
-    look_back = 5  # remove after pulling from airflow
-    resale_flat_transactions = resale_flat_transactions[
-        resale_flat_transactions["year"] >= 2023 - look_back
-    ]
+def transform_resale_transactions_ml(
+    cpi_df_path, resale_flat_transactions_path, hdb_info_path
+):
+    cpi_df = get_cpi_df(cpi_df_path)
+    # resale_flat_transactions = pd.read_csv("data/resale_flats_transformed.csv")
+    resale_flat_transactions = pd.read_csv(resale_flat_transactions_path)
+    # hdb_info = pd.read_csv("data/hdb_information.csv")
+    hdb_info = pd.read_csv(hdb_info_path)
+    # look_back = 5
+    # resale_flat_transactions = resale_flat_transactions[
+    #     resale_flat_transactions["year"] >= 2023 - look_back
+    # ]
     # create primary key for resale flat transactions and hdb information
     resale_flat_transactions["full_address"] = (
         resale_flat_transactions["block"]
@@ -253,15 +249,18 @@ def transform_resale_transactions_ml():
     )
 
     return resale_flat_transactions_df_grouped_dict
+    # with open(data_path + "resale_flat_transactions_df_grouped_dict.pkl", "wb") as f:
+    #     pickle.dump(resale_flat_transactions_df_grouped_dict, f)
 
 
-def transform_flat_rental_ml():
-    cpi_df = get_cpi_df()
+def transform_flat_rental_ml(cpi_df_path, flat_rental_path):
+    cpi_df = get_cpi_df(cpi_df_path)
     # since based on the results from modelling, linear interpolation does not work well, we will not use it here
     # in some cases SARIMAX does outperform SARIMA and baseline, so we need to do feature engineering to add features in as exogenous variables
     # transformations already applied to flat_transactions_df so skip that
     # flat_rental_df
-    flat_rental_df = pd.read_csv("data/flat_rental_transformed.csv")
+    # flat_rental_df = pd.read_csv("data/flat_rental_transformed.csv")
+    flat_rental_df = pd.read_csv(flat_rental_path)
     # take year and month column and convert to datetime
     flat_rental_df["month"] = flat_rental_df["month"].astype(str)
     flat_rental_df["year"] = flat_rental_df["year"].astype(str)
@@ -334,11 +333,14 @@ def transform_flat_rental_ml():
     flat_rental_df_grouped_dict = get_ts_per_district(flat_rental_df_grouped)
 
     return flat_rental_df_grouped_dict
+    # with open(data_path + "flat_rental_df_grouped_dict.pkl", "wb") as f:
+    #     pickle.dump(flat_rental_df_grouped_dict, f)
 
 
-def transform_private_transactions_ml():
-    cpi_df = get_cpi_df()
-    private_transactions_df = pd.read_csv("data/private_transactions_transformed.csv")
+def transform_private_transactions_ml(cpi_df_path, private_transactions_path):
+    cpi_df = get_cpi_df(cpi_df_path)
+    # private_transactions_df = pd.read_csv("data/private_transactions_transformed.csv")
+    private_transactions_df = pd.read_csv(private_transactions_path)
     private_transactions_df = private_transactions_df.drop(
         columns=["floorRange", "nettPrice", "street", "project"]
     )
@@ -433,4 +435,66 @@ def transform_private_transactions_ml():
         private_transactions_df_grouped
     )
 
-    return private_transactions_df_grouped_dict
+    # return private_transactions_df_grouped_dict
+    with open(data_path + "private_transactions_df_grouped_dict.pkl", "wb") as f:
+        pickle.dump(private_transactions_df_grouped_dict, f)
+
+
+def transform_private_rental_ml(cpi_df_path, private_rental_df_path):
+    # private_rental_df = pd.read_csv("data/private_rental_transformed.csv")
+    cpi_df = pd.read_csv(cpi_df_path)
+    private_rental_df = pd.read_csv(private_rental_df_path)
+    private_rental_df = private_rental_df.drop(columns=["street", "project"])
+    # convert areaSqft to dummy variables
+    private_rental_df = pd.get_dummies(
+        private_rental_df, columns=["areaSqft"], drop_first=True
+    )  # prevent multicollinearity
+    private_rental_df = pd.get_dummies(
+        private_rental_df, columns=["areaSqm"], drop_first=True
+    )  # prevent multicollinearity
+    private_rental_df = pd.get_dummies(
+        private_rental_df, columns=["propertyType"], drop_first=True
+    )  # prevent multicollinearity
+    private_rental_df["month"] = private_rental_df["month"].astype(str)
+    private_rental_df["year"] = private_rental_df["year"].astype(str)
+    private_rental_df["month_year"] = (
+        private_rental_df["year"] + "-" + private_rental_df["month"]
+    )
+    private_rental_df["month_year"] = pd.to_datetime(
+        private_rental_df["month_year"], format="%Y-%m"
+    )
+    private_rental_df = private_rental_df.drop(columns=["year", "month", "leaseDate"])
+    private_rental_df = private_rental_df.merge(
+        cpi_df, how="left", left_on="month_year", right_on="Month"
+    )
+    private_rental_df = private_rental_df.sort_values(by="month_year")
+    private_rental_df["cpi"] = private_rental_df["cpi"].fillna(method="ffill")
+    private_rental_df = private_rental_df.drop(columns=["Month"])
+
+    # rename to price
+    private_rental_df.rename(columns={"rent": "price"}, inplace=True)
+
+    # lag all except price by 1
+    lag_cols = private_rental_df.columns.drop(["price", "month_year"])
+    private_rental_df[lag_cols] = private_rental_df[lag_cols].shift(1)
+
+    # create dict for columns to group by
+    agg_dict = {}
+    for col in private_rental_df.columns:
+        if "areaSqft" in col:
+            agg_dict[col] = "sum"
+        elif "areaSqm" in col:
+            agg_dict[col] = "sum"
+        elif "propertyType" in col:
+            agg_dict[col] = "sum"
+    agg_dict["cpi"] = "first"
+    agg_dict["price"] = "median"
+    # group by district and month_year
+    private_rental_df_grouped = (
+        private_rental_df.groupby(["district", "month_year"])
+        .agg(agg_dict)
+        .fillna(0)
+        .reset_index()
+    )
+
+    private_rental_df_grouped_dict = get_ts_per_district(private_rental_df_grouped)

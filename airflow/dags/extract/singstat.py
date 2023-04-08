@@ -20,7 +20,7 @@ def get_cpi():
     # rename columns
     df.columns = ['Month', 'Value']
     # set index
-    df.set_index('Month', inplace=True)
+    # df.set_index('Month', inplace=True)
 
     # df.to_csv("../data/cpi.csv")
     return df

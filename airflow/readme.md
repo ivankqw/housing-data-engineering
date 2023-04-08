@@ -13,7 +13,7 @@
 ## Usage 
 1. Run Docker Desktop
 2. cd to `/housing-data-engineering/airflow` 
-3. Run `docker build .`
+3. Run `docker build --no-cache .`
 4. Run `docker-compose up`
 5. Go to [localhost:8080](http://localhost:8080) and input airflow as username and password 
 6. Go to Admin > Connections, Create a new connection, enter the connection id (postgres_localhost), connection type (postgres), Host (airflow-db-1), Login and Password (db), Port (5432).

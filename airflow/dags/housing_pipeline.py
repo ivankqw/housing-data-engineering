@@ -8,10 +8,18 @@ import extract.ura as ura
 import extract.datagovsg as datagovsg
 import extract.singstat as singstat
 import transform.transform as transform
-import transform.transform_ml as transform_ml
+from transform.transform_for_forecast import (
+    transform_resale_transactions_ml,
+    transform_flat_rental_ml,
+    transform_private_transactions_ml,
+    transform_private_rental_ml,
+)
 import os
 import load.queries as queries
 import pandas as pd
+import pickle
+
+data_path = "/opt/airflow/dags/data/"
 
 with DAG(
     dag_id="housing_pipeline",
@@ -221,7 +229,7 @@ with DAG(
 
     def insert_cpi(**kwargs):
         ti = kwargs["ti"]
-        df_cpi_filename = ti.xcom_pull(task_ids="extract_cpi_data", key="df_cpi")
+        df_cpi_filename = ti.xcom_pull(task_ids="extract_singstat_data", key="df_cpi")
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
             sql=queries.INSERT_CPI, filename=df_cpi_filename
         )
@@ -304,6 +312,125 @@ with DAG(
             sql=queries.INSERT_RENTAL_FLATS, filename=df_rental_flats_filename
         )
 
+    # todo
+    def get_all_cpi(**kwargs):
+        ti = kwargs["ti"]
+        postgres = PostgresHook(postgres_conn_id="db_localhost")
+        df_cpi = postgres.get_pandas_df("SELECT * FROM cpi;")
+        cpi_path = "/opt/airflow/dags/data/cpi.csv"
+        df_cpi.to_csv(cpi_path, index=False)
+        ti.xcom_push("df_cpi", cpi_path)
+
+    def get_five_year_resale_transactions(**kwargs):
+        ti = kwargs["ti"]
+        postgres = PostgresHook(postgres_conn_id="db_localhost")
+        df_resale_flats = postgres.get_pandas_df(
+            "SELECT * FROM resale_flats WHERE year >= 2018;"
+        )
+        resale_flats_path = "/opt/airflow/dags/data/resale_flats_transformed.csv"
+        df_resale_flats.to_csv(resale_flats_path, index=False)
+        ti.xcom_push("df_resale_flats", resale_flats_path)
+
+    def get_flat_rental_transactions(**kwargs):
+        ti = kwargs["ti"]
+        postgres = PostgresHook(postgres_conn_id="db_localhost")
+        df_rental_flats = postgres.get_pandas_df("SELECT * FROM rental_flats;")
+        rental_flats_path = "/opt/airflow/dags/data/rental_flats_transformed.csv"
+        df_rental_flats.to_csv(rental_flats_path, index=False)
+        ti.xcom_push("df_rental_flats", rental_flats_path)
+
+    def get_private_transactions(**kwargs):
+        ti = kwargs["ti"]
+        postgres = PostgresHook(postgres_conn_id="db_localhost")
+        df_private_transactions = postgres.get_pandas_df(
+            "SELECT * FROM private_transactions;"
+        )
+        private_transactions_path = (
+            "/opt/airflow/dags/data/private_transactions_transformed.csv"
+        )
+        df_private_transactions.to_csv(private_transactions_path, index=False)
+        ti.xcom_push("df_private_transactions", private_transactions_path)
+
+    def get_private_rental(**kwargs):
+        ti = kwargs["ti"]
+        postgres = PostgresHook(postgres_conn_id="db_localhost")
+        df_private_rental = postgres.get_pandas_df("SELECT * FROM private_rental;")
+        private_rental_path = "/opt/airflow/dags/data/private_rental_transformed.csv"
+        df_private_rental.to_csv(private_rental_path, index=False)
+        ti.xcom_push("df_private_rental", private_rental_path)
+
+    def get_hdb_information(**kwargs):
+        ti = kwargs["ti"]
+        postgres = PostgresHook(postgres_conn_id="db_localhost")
+        df_hdb_info = postgres.get_pandas_df("SELECT * FROM hdb_information;")
+        hdb_info_path = "/opt/airflow/dags/data/hdb_information.csv"
+        df_hdb_info.to_csv(hdb_info_path, index=False)
+        ti.xcom_push("df_hdb_info", hdb_info_path)
+
+    def transform_resale_flat_transactions_ml(**kwargs):
+        ti = kwargs["ti"]
+        df_resale_flats_filename = ti.xcom_pull(
+            task_ids="get_five_year_resale_transactions", key="df_resale_flats"
+        )
+        cpi_path = ti.xcom_pull(task_ids="get_all_cpi", key="df_cpi")
+        hdb_info_path = ti.xcom_pull(task_ids="get_hdb_information", key="df_hdb_info")
+        resale_flat_transactions_df_grouped_dict = (
+            transform_resale_flat_transactions_ml(
+                cpi_path,  # type: ignore
+                df_resale_flats_filename,
+                hdb_info_path,
+            )
+        )
+        output_path = data_path + "resale_flat_transactions_df_grouped_dict.pkl"
+        with open(output_path, "wb") as f:
+            pickle.dump(resale_flat_transactions_df_grouped_dict, f)
+        ti.xcom_push(
+            "resale_flat_transactions_df_grouped_dict",
+            output_path,
+        )
+
+    def transform_flat_rental_ml(**kwargs):
+        ti = kwargs["ti"]
+        df_rental_flats_filename = ti.xcom_pull(
+            task_ids="get_flat_rental_transactions", key="df_rental_flats"
+        )
+        cpi_path = ti.xcom_pull(task_ids="get_all_cpi", key="df_cpi")
+        rental_flat_df_grouped_dict = transform_flat_rental_ml(
+            cpi_path, df_rental_flats_filename  # type: ignore
+        )
+        output_path = data_path + "rental_flat_df_grouped_dict.pkl"
+        with open(output_path, "wb") as f:
+            pickle.dump(rental_flat_df_grouped_dict, f)
+        ti.xcom_push("rental_flat_df_grouped_dict", output_path)
+
+    def transform_private_transactions_ml(**kwargs):
+        ti = kwargs["ti"]
+        df_private_transactions_filename = ti.xcom_pull(
+            task_ids="get_private_transactions", key="df_private_transactions"
+        )
+        cpi_path = ti.xcom_pull(task_ids="get_all_cpi", key="df_cpi")
+        private_transactions_df_grouped_dict = transform_private_transactions_ml(
+            cpi_path, df_private_transactions_filename  # type: ignore
+        )
+        output_path = data_path + "private_transactions_df_grouped_dict.pkl"
+        with open(output_path, "wb") as f:
+            pickle.dump(private_transactions_df_grouped_dict, f)
+        ti.xcom_push("private_transactions_df_grouped_dict", output_path)
+
+    def transform_private_rental_ml(**kwargs):
+        ti = kwargs["ti"]
+        df_private_rental_filename = ti.xcom_pull(
+            task_ids="get_private_rental", key="df_private_rental"
+        )
+        cpi_path = ti.xcom_pull(task_ids="get_all_cpi", key="df_cpi")
+        private_rental_df_grouped_dict = transform_private_rental_ml(
+            cpi_path, df_private_rental_filename  # type: ignore
+        )
+        output_path = data_path + "private_rental_df_grouped_dict.pkl"
+        with open(output_path, "wb") as f:
+            pickle.dump(private_rental_df_grouped_dict, f)
+        ti.xcom_push("private_rental_df_grouped_dict", output_path)
+
     extract_singstat_data_task = PythonOperator(
         task_id="extract_singstat_data",
         python_callable=extract_singstat_data,
@@ -337,6 +464,56 @@ with DAG(
     transform_rental_flat_task = PythonOperator(
         task_id="transform_rental_flats",
         python_callable=transform_rental_flats,
+    )
+
+    get_all_cpi_task = PythonOperator(
+        task_id="get_all_cpi",
+        python_callable=get_all_cpi,
+    )
+
+    get_five_year_resale_transactions_task = PythonOperator(
+        task_id="get_five_year_resale_transactions",
+        python_callable=get_five_year_resale_transactions,
+    )
+
+    get_flat_rental_transactions_task = PythonOperator(
+        task_id="get_flat_rental_transactions",
+        python_callable=get_flat_rental_transactions,
+    )
+
+    get_private_transactions_task = PythonOperator(
+        task_id="get_private_transactions",
+        python_callable=get_private_transactions,
+    )
+
+    get_private_rental_task = PythonOperator(
+        task_id="get_private_rental",
+        python_callable=get_private_rental,
+    )
+
+    get_hdb_information_task = PythonOperator(
+        task_id="get_hdb_information",
+        python_callable=get_hdb_information,
+    )
+
+    transform_resale_flat_transactions_ml_task = PythonOperator(
+        task_id="transform_resale_flat_transactions_ml",
+        python_callable=transform_resale_flat_transactions_ml,
+    )
+
+    transform_flat_rental_ml_task = PythonOperator(
+        task_id="transform_flat_rental_ml",
+        python_callable=transform_flat_rental_ml,
+    )
+
+    transform_private_transactions_ml_task = PythonOperator(
+        task_id="transform_private_transactions_ml",
+        python_callable=transform_private_transactions_ml,
+    )
+
+    transform_private_rental_ml_task = PythonOperator(
+        task_id="transform_private_rental_ml",
+        python_callable=transform_private_rental_ml,
     )
 
     # create a postgres operator to execute the create_tables_query
@@ -399,12 +576,13 @@ with DAG(
     )
 
     extract_ura_data_task >> transform_private_transactions_and_rental_task
+
     extract_datagovsg_data_task >> [
         transform_resale_flat_transactions_task,
         transform_salesperson_transactions_task,
         transform_rental_flat_task,
     ]
-
+    
     (
         [
             extract_singstat_data_task,
@@ -426,4 +604,47 @@ with DAG(
             insert_rental_flats,
         ]  # type: ignore
         >> alter_tables
+        >> [
+            get_all_cpi_task,
+            get_five_year_resale_transactions_task,
+            get_flat_rental_transactions_task,
+            get_private_transactions_task,
+            get_private_rental_task,
+            get_hdb_information_task,
+        ]
     )
+
+    (
+        [
+            get_all_cpi_task,
+            get_five_year_resale_transactions_task,
+            get_hdb_information_task,
+        ]
+        >> transform_resale_flat_transactions_ml_task,
+    )
+
+    (
+        [
+            get_all_cpi_task,
+            get_flat_rental_transactions_task,
+        ]
+        >> transform_flat_rental_ml_task,
+    )
+
+    (
+        [
+            get_all_cpi_task,
+            get_private_transactions_task,
+        ]
+        >> transform_private_transactions_ml_task,
+    )
+
+    (
+        [  
+            get_all_cpi_task,
+            get_private_rental_task,
+        ]
+        >> transform_private_rental_ml_task,
+    )
+
+

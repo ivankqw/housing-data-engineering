@@ -1,4 +1,5 @@
 CREATE_TABLES = """
+        DROP TABLE IF EXISTS cpi;
         DROP TABLE IF EXISTS salesperson_transactions;
         DROP TABLE IF EXISTS salesperson_information;
         DROP TABLE IF EXISTS private_transactions;
@@ -11,7 +12,7 @@ CREATE_TABLES = """
         CREATE TABLE IF NOT EXISTS cpi (
             Month DATE NOT NULL PRIMARY KEY,
             Value FLOAT
-        )
+        );
 
         CREATE TABLE IF NOT EXISTS salesperson_information (
             registration_end_date DATE,
@@ -211,7 +212,6 @@ INSERT_RENTAL_FLATS = """
     """
 
 ALTER_TABLES = """
-    ALTER TABLE cpi ADD CONSTRAINT unique_month_year UNIQUE (month, year);
     ALTER TABLE districts ADD CONSTRAINT unique_postal_district UNIQUE (postal_district);            
     ALTER TABLE salesperson_information ADD CONSTRAINT unique_registration_no UNIQUE (registration_no);
     ALTER TABLE salesperson_transactions ADD CONSTRAINT fk_salesperson_registration_no FOREIGN KEY (salesperson_reg_num) REFERENCES salesperson_information (registration_no);
