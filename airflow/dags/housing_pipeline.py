@@ -9,10 +9,10 @@ import extract.datagovsg as datagovsg
 import extract.singstat as singstat
 import transform.transform as transform
 from transform.transform_for_forecast import (
-    transform_resale_transactions_ml,
-    transform_flat_rental_ml,
-    transform_private_transactions_ml,
-    transform_private_rental_ml,
+    transform_resale_transactions_ml as ml_resale,
+    transform_flat_rental_ml as ml_rental,
+    transform_private_transactions_ml as ml_private_transactions,
+    transform_private_rental_ml as ml_private_rental,
 )
 import os
 import load.queries as queries
@@ -375,8 +375,8 @@ with DAG(
         cpi_path = ti.xcom_pull(task_ids="get_all_cpi", key="df_cpi")
         hdb_info_path = ti.xcom_pull(task_ids="get_hdb_information", key="df_hdb_info")
         resale_flat_transactions_df_grouped_dict = (
-            transform_resale_flat_transactions_ml(
-                cpi_path,  # type: ignore
+            ml_resale (
+                cpi_path,  
                 df_resale_flats_filename,
                 hdb_info_path,
             )
@@ -395,8 +395,8 @@ with DAG(
             task_ids="get_flat_rental_transactions", key="df_rental_flats"
         )
         cpi_path = ti.xcom_pull(task_ids="get_all_cpi", key="df_cpi")
-        rental_flat_df_grouped_dict = transform_flat_rental_ml(
-            cpi_path, df_rental_flats_filename  # type: ignore
+        rental_flat_df_grouped_dict = ml_rental(
+            cpi_path, df_rental_flats_filename  
         )
         output_path = data_path + "rental_flat_df_grouped_dict.pkl"
         with open(output_path, "wb") as f:
@@ -409,8 +409,8 @@ with DAG(
             task_ids="get_private_transactions", key="df_private_transactions"
         )
         cpi_path = ti.xcom_pull(task_ids="get_all_cpi", key="df_cpi")
-        private_transactions_df_grouped_dict = transform_private_transactions_ml(
-            cpi_path, df_private_transactions_filename  # type: ignore
+        private_transactions_df_grouped_dict = ml_private_transactions(
+            cpi_path, df_private_transactions_filename  
         )
         output_path = data_path + "private_transactions_df_grouped_dict.pkl"
         with open(output_path, "wb") as f:
@@ -423,8 +423,8 @@ with DAG(
             task_ids="get_private_rental", key="df_private_rental"
         )
         cpi_path = ti.xcom_pull(task_ids="get_all_cpi", key="df_cpi")
-        private_rental_df_grouped_dict = transform_private_rental_ml(
-            cpi_path, df_private_rental_filename  # type: ignore
+        private_rental_df_grouped_dict = ml_private_rental(
+            cpi_path, df_private_rental_filename  
         )
         output_path = data_path + "private_rental_df_grouped_dict.pkl"
         with open(output_path, "wb") as f:
@@ -646,5 +646,4 @@ with DAG(
         ]
         >> transform_private_rental_ml_task,
     )
-
-
+    
