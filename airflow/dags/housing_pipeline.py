@@ -395,13 +395,13 @@ with DAG(
             task_ids="get_flat_rental_transactions", key="df_rental_flats"
         )
         cpi_path = ti.xcom_pull(task_ids="get_all_cpi", key="df_cpi")
-        rental_flat_df_grouped_dict = ml_rental(
+        flat_rental_df_grouped_dict = ml_rental(
             cpi_path, df_rental_flats_filename  
         )
-        output_path = data_path + "rental_flat_df_grouped_dict.pkl"
+        output_path = data_path + "flat_rental_df_grouped_dict.pkl"
         with open(output_path, "wb") as f:
-            pickle.dump(rental_flat_df_grouped_dict, f)
-        ti.xcom_push("rental_flat_df_grouped_dict", output_path)
+            pickle.dump(flat_rental_df_grouped_dict, f)
+        ti.xcom_push("flat_rental_df_grouped_dict", output_path)
 
     def transform_private_transactions_ml(**kwargs):
         ti = kwargs["ti"]

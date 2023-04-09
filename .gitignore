@@ -27,4 +27,5 @@ airflow/logs/*
 
 # modelling
 modelling/lightning_logs/*
+modelling/data
 
