@@ -12,16 +12,24 @@ Gathering and analysing housing data from various sources are important and usef
 
 Furthermore, it can help to identify emerging trends and patterns in various segments of the housing market, such as price movements, supply and demand dynamics, and rental yields. This has widespread benefits for various actors in the market, helping them make data-driven decisions. 
 
+## Application 1: PowerBI Dashboard
+
 
 ## Application 2: Modelling Housing Prices 
 
 We attempt to model housing prices for the following:
 
-1. [Monthly median resale flat prices](modelling/sarima.ipynb)
+1. Monthly median resale flat prices
 2. Monthly median private property prices 
 3. Monthly median flat rental prices
 4. Monthly median private property rental prices
 
-- Before integrating extract and transform processes into the pipeline, a full process from data extraction to modelling was carried out.
-- This was done to ensure that the pipeline would be able to handle the data and produce the desired results
+- A full DAG run on Airflow (ETL) was carried out to prepare the data for modelling
+- The data was then modelled outside of Airflow using:
+    - SARIMA (Seasonal AutoRegressive Integrated Moving Average)
+    - SARIMAX (Seasonal AutoRegressive Integrated Moving Average with Exogenous Variables)
+    - LSTM (Long Short-Term Memory)
 - An example process is outlined in the [notebook](modelling/sarima.ipynb) where resale flat prices are modelled.
+- The best models for each district are chosen based on the lowest RMSE (Root Mean Squared Error) scores.
+- The models are then saved as pickle files for future use.
+- The models are then imported for inference in the [Housing Prices Visualisation Dashboard Notebook](housing_prices_viz.ipynb). An interactive version of the notebook can be accessed [here](https://nbviewer.org/github/ivankqw/housing-data-engineering/blob/main/housing_prices_viz.ipynb?flush_cache=True) 
