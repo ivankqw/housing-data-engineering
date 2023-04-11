@@ -226,6 +226,16 @@ with DAG(
         df_rental_flats.to_csv(data_path_rental_flats, index=False)
 
         ti.xcom_push("df_rental_flats_transformed", data_path_rental_flats)
+    
+    def transform_salesperson_info(**kwargs):
+        ti = kwargs["ti"]
+        df_salesperson_info_filename = ti.xcom_pull(
+            task_ids="extract_datagovsg_data", key="df_salesperson_info"
+        )
+        df_salesperson_info_transformed = transform.transform_salesperson_info(df_salesperson_info_filename)
+        output_path = data_path + "salesperson_info_transformed.csv"
+        df_salesperson_info_transformed.to_csv(output_path, index=False)
+        ti.xcom_push("df_salesperson_info_transformed", output_path)
 
     def insert_cpi(**kwargs):
         ti = kwargs["ti"]
@@ -255,7 +265,7 @@ with DAG(
     def insert_salesperson_information(**kwargs):
         ti = kwargs["ti"]
         df_salesperson_info_filename = ti.xcom_pull(
-            task_ids="extract_datagovsg_data", key="df_salesperson_info"
+            task_ids="transform_salesperson_information", key="df_salesperson_info_transformed"
         )
         PostgresHook(postgres_conn_id="db_localhost").copy_expert(
             sql=queries.INSERT_SALESPERSON_INFORMATION,
@@ -366,7 +376,7 @@ with DAG(
         hdb_info_path = "/opt/airflow/dags/data/hdb_information.csv"
         df_hdb_info.to_csv(hdb_info_path, index=False)
         ti.xcom_push("df_hdb_info", hdb_info_path)
-
+    
     def transform_resale_flat_transactions_ml(**kwargs):
         ti = kwargs["ti"]
         df_resale_flats_filename = ti.xcom_pull(
@@ -444,6 +454,11 @@ with DAG(
     extract_datagovsg_data_task = PythonOperator(
         task_id="extract_datagovsg_data",
         python_callable=extract_datagovsg_data,
+    )
+
+    transform_salesperson_information_task = PythonOperator(
+        task_id="transform_salesperson_information",
+        python_callable=transform_salesperson_info,
     )
 
     transform_private_transactions_and_rental_task = PythonOperator(
@@ -578,6 +593,7 @@ with DAG(
     extract_ura_data_task >> transform_private_transactions_and_rental_task
 
     extract_datagovsg_data_task >> [
+        transform_salesperson_information_task,
         transform_resale_flat_transactions_task,
         transform_salesperson_transactions_task,
         transform_rental_flat_task,
@@ -590,6 +606,7 @@ with DAG(
             transform_private_transactions_and_rental_task,
             transform_resale_flat_transactions_task,
             transform_salesperson_transactions_task,
+            transform_salesperson_information_task,
         ]
         >> create_tables
         >> [

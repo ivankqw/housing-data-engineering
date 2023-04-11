@@ -308,3 +308,10 @@ def transform_rental_flats(filename, districts):
     rental_flats = rental_flats[rental_flats["district"] != "NIL"]
 
     return rental_flats
+
+def transform_salesperson_info(filename):
+    # read the salesperson_info csv file 
+    salesperson_info = pd.read_csv(filename)
+    # remove duplicates for registration_no column
+    salesperson_info = salesperson_info.drop_duplicates(subset=['registration_no'])
+    return salesperson_info
