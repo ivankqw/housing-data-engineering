@@ -1,5 +1,7 @@
 # Housing Data Engineering Pipeline 
 
+![image](https://user-images.githubusercontent.com/66941932/232530471-451cba3b-a0e0-4fa6-99bd-b9a85276f689.png)
+
 ## Description of problem
 The housing market in Singapore is facing several challenges, such as the fragmentation of information across different actors and sources, and the volatility of the market due to external factors such as COVID-19, inflation, and interest rates. 
 
